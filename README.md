@@ -25,12 +25,12 @@ git clone https://github.com/DayZGhost/dayz-dev-plugin.git ~/.claude/skills/dayz
 ### Gemini Code Assist
 
 1. Copy the `.gemini/` directory to your DayZ mod project root
-2. Copy the knowledge files (`scripting/`, `systems/`, `frameworks/`, `config/`, `compatibility/`) alongside it
+2. Copy the knowledge files (`scripting/`, `systems/`, `frameworks/`, `config/`, `testing/`, `compatibility/`) alongside it
 3. Gemini Code Assist automatically loads `.gemini/GEMINI.md` as project context
 
 ```bash
 git clone https://github.com/DayZGhost/dayz-dev-plugin.git /tmp/dayz-dev
-cp -r /tmp/dayz-dev/.gemini /tmp/dayz-dev/scripting /tmp/dayz-dev/systems /tmp/dayz-dev/frameworks /tmp/dayz-dev/config /tmp/dayz-dev/compatibility your-project/
+cp -r /tmp/dayz-dev/.gemini /tmp/dayz-dev/scripting /tmp/dayz-dev/systems /tmp/dayz-dev/frameworks /tmp/dayz-dev/config /tmp/dayz-dev/testing /tmp/dayz-dev/compatibility your-project/
 ```
 
 ### Cursor / Windsurf
@@ -95,6 +95,8 @@ Use the `/dayz-dev` command for direct queries:
 | `frameworks/` | Framework detection, Community Framework, Expansion |
 | `config/` | config.cpp, types.xml, server configuration |
 | `compatibility/` | Version 1.29 and 1.28 breaking changes and migration guides |
+| `testing/` | Testing a mod headless on the Steam-installed local DayZ Server |
+| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350 and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), installer |
 | `commands/` | `/dayz-dev` slash command template |
 
 ## What's Covered
