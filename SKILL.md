@@ -1,7 +1,7 @@
 ---
 name: dayz-dev
 description: DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 (1.28 notes kept).
-allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*)
+allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*)
 ---
 
 # DayZ Development
@@ -103,6 +103,7 @@ if (player)
 | `config/config-cpp.md` | config.cpp reference and patterns | Item/vehicle config |
 | `config/types-xml.md` | types.xml, economy system | Loot spawning |
 | `config/server-config.md` | Server configuration files | Server setup |
+| `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
 | `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current) |
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 
@@ -297,7 +298,20 @@ WebFetch(
 For changes between two specific builds, diff the DayZ-Script-Diff commits listed in
 https://diff.yadz.app/assets/versions.json.
 
-### RULE 8: Local Knowledge
+### RULE 8: Testing a Mod
+**Triggers when:**
+- A mod change is about to be called done, or "test", "verify", "does it load", "run the server"
+- `DayZServer`, `-servermod`, `-mod=`, `script_*.log`, `.RPT`, "compile error", "mod not loading"
+
+**Action:** Read local `testing/local-server.md`. Locate the server with
+`${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh` (Steam app 223350); if it is missing, ask the
+user to install it through Steam - do not set up steamcmd unless they ask. **Never copy, edit or
+write anything in the Steam directories**: run the server from a tree of your own made by
+`${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>`, with mods symlinked into it
+(workshop mods from `find-dayzserver.sh -w`) and passed as relative `-servermod=`/`-mod=` paths.
+A PBO that builds is not a tested mod: boot it and compare the script module counts with vanilla.
+
+### RULE 9: Local Knowledge
 **Triggers when:**
 - Mod structure, folder layout, PBO packaging
 - Best practices, anti-patterns, common pitfalls

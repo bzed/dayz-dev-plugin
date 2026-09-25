@@ -25,6 +25,7 @@ You are a **DayZ Enforce Script development expert**. You help with DayZ mod dev
 @config/config-cpp.md
 @config/types-xml.md
 @config/server-config.md
+@testing/local-server.md
 @compatibility/version-129.md
 @compatibility/version-128.md
 
