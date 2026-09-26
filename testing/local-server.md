@@ -85,7 +85,7 @@ and creates:
 | `DayZServer`, `addons/`, `dta/`, `sakhal/`, ... | one symlink per top-level entry of the Steam install |
 | `serverDZ.cfg` | a copy, yours to edit (mission `template`, ports) |
 | `mpmissions/<mission>/` | a real directory of per-file symlinks, so `storage_1/` is written into the tree |
-| `keys/`, `battleye/` | real directories of per-file symlinks; add your own `.bikey` here |
+| `keys/`, `battleye/` | real directories of per-file symlinks; add your own `.bikey` here (the `battleye/` here holds the BattlEye binaries, not the RCon config) |
 | `profiles/` | for `-profiles=profiles` |
 
 Rules for working with the tree:
@@ -95,6 +95,71 @@ Rules for working with the tree:
   `cp --remove-destination "$(readlink "$TREE/mpmissions/<m>/init.c")" "$TREE/mpmissions/<m>/init.c"`
 - **After a Steam update:** re-run the script. It refreshes the symlinks and keeps your real files.
 - **The tree is disposable:** a real directory, never a git checkout. Delete it to start clean.
+- **One tree per running server.** See the next section.
+
+### Never run two servers on the same tree
+
+A running server locks its `profiles/` directory (log files) and the `storage_1/` persistence in
+its mission folder. Two servers started against the same `-profiles=` or the same
+`mpmissions/<mission>/` collide: one fails to start, or both corrupt each other's logs and
+persistence, and the logs you read afterwards belong to neither. This holds even when the
+second server "only" runs for a minute.
+
+To debug several configurations in parallel (with and without a mod, two mods against each other,
+a baseline next to a change), give every server a tree of its own:
+
+```sh
+TREE_A=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-testserver-a)
+TREE_B=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-testserver-b)
+```
+
+Every tree has its own `profiles/`, `mpmissions/` and `battleye/`, so nothing is shared except
+the read-only symlinks into Steam. Mods can be symlinked into several trees. Do not point a
+second `-profiles=` at a directory inside the first tree as a shortcut: `mpmissions/` would still
+be shared, and its `storage_1/` is the other lock. Sequential runs may reuse one tree.
+
+### Never leave a port at its default
+
+Every server needs its own **game, Steam query and RCon port**, none of them a default. The
+defaults (game 2302, query 2303, RCon 2306) are what a real server, a DayZ client on the same
+machine, or the previous test run is most likely still holding. A collision may not produce an
+error: the server starts and answers on the wrong socket, or RCon silently does not come up.
+Take random free ports instead:
+
+```sh
+set -- $("${CLAUDE_SKILL_DIR}/scripts/free-ports.sh" 3)
+GAME=$1 QUERY=$2 RCON=$3
+```
+
+`free-ports.sh [N]` prints N ports that are unused for both UDP and TCP right now, avoid
+2302-2306 and 27015-27017, and differ from each other by at least 10, because the server also
+uses the ports next to its game port. Apply them in the tree before the first start:
+
+| Port | Where to set it |
+|---|---|
+| game | `-port=$GAME` on the command line |
+| Steam query | `steamQueryPort = $QUERY;` in the tree's `serverDZ.cfg` (add the line if the file has none) |
+| RCon | `RConPort $RCON` in the BattlEye seed config `$TREE/profiles/battleye/beserver_x64.cfg` (see below) |
+
+The Steam install's `serverDZ.cfg` has no port lines, so a fresh tree runs on the built-in
+defaults until you add them. Pick new ports for every tree and every run: they are only free at
+the moment `free-ports.sh` checks them.
+
+**The RCon config lives in the profile directory, not in `battleye/`.** With
+`-profiles=profiles` the server reads `$TREE/profiles/battleye/beserver_x64.cfg` once, writes
+its working copy `beserver_x64_active_<hex>.cfg` (lowercase hex suffix) next to it, and uses only
+that copy from then on. So a seed file is ignored as soon as an active file exists:
+
+```sh
+mkdir -p "$TREE/profiles/battleye"
+rm -f "$TREE"/profiles/battleye/beserver_x64_active_*.cfg     # stale copy would keep the old port
+printf 'RConPassword %s\nRestrictRCon 0\nRConPort %s\n' \
+    "$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c10)" "$RCON" > "$TREE/profiles/battleye/beserver_x64.cfg"
+```
+
+Generate a random RCon password too; never use a fixed one. Only create the seed when the test
+needs RCon. To read the password or port of a run that already happened, look in the
+`beserver_x64_active_*.cfg` file (the seed may be absent).
 
 ### Mods are symlinks in the tree too
 
@@ -117,7 +182,7 @@ Steam directories.
 ```sh
 cd "$TREE" && ulimit -c 0 && timeout -k 15 60 ./DayZServer \
     -config=serverDZ.cfg -profiles=profiles \
-    -servermod=@MyMod "-mod=@CF" -port=2402 -nosplash -nopause -dologs
+    -servermod=@MyMod "-mod=@CF" -port=$GAME -nosplash -nopause -dologs
 ```
 
 Launch rules:
@@ -138,7 +203,11 @@ Launch rules:
 - **Don't `pkill -f DayZServer` in the same command line.** The pattern matches the shell
   running the pkill. Use the PID, or `timeout`. The process shows up as `enfMain` in `ps`, not
   `DayZServer`.
-- **Pick a spare port.** `-port=2402` avoids a real server or client on 2302.
+- **Never use the default ports.** Pass `-port=$GAME` from `free-ports.sh` and set the query and
+  RCon ports in the tree too (see above). A fixed "spare" port such as 2402 works for one run
+  and fails the moment a second server or a leftover process is around.
+- **One tree per concurrent server.** Never start two servers on the same `profiles/` or
+  `mpmissions/`; build a second tree instead.
 - **`-mod=`** is for mods the client must load too. A headless test still only proves the
   server side.
 

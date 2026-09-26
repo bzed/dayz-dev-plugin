@@ -1,7 +1,7 @@
 ---
 name: dayz-dev
 description: DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 (1.28 notes kept).
-allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*)
+allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*)
 ---
 
 # DayZ Development
@@ -309,6 +309,10 @@ user to install it through Steam - do not set up steamcmd unless they ask. **Nev
 write anything in the Steam directories**: run the server from a tree of your own made by
 `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>`, with mods symlinked into it
 (workshop mods from `find-dayzserver.sh -w`) and passed as relative `-servermod=`/`-mod=` paths.
+**Never run two servers on the same tree** (same `profiles/` or `mpmissions/`): they lock those
+folders and corrupt each other. For parallel debugging build one tree per server. **Never leave
+the game, Steam query or RCon port at its default**: take random free ones from
+`${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3` for every server.
 A PBO that builds is not a tested mod: boot it and compare the script module counts with vanilla.
 
 ### RULE 9: Local Knowledge

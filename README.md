@@ -96,7 +96,7 @@ Use the `/dayz-dev` command for direct queries:
 | `config/` | config.cpp, types.xml, server configuration |
 | `compatibility/` | Version 1.29 and 1.28 breaking changes and migration guides |
 | `testing/` | Testing a mod headless on the Steam-installed local DayZ Server |
-| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350 and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), installer |
+| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350 and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), installer |
 | `commands/` | `/dayz-dev` slash command template |
 
 ## What's Covered
