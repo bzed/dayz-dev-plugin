@@ -5,7 +5,8 @@ build do not show that the scripts compile, that a `modded class` or `override` 
 even that the engine loaded the scripts at all. A local dedicated server answers all three in
 under a minute, with no client and no players.
 
-Everything below was verified with the native Linux `DayZServer` binary of DayZ 1.29. The
+Everything below was verified with the native Linux `DayZServer` binary of DayZ 1.29, and the
+experimental 1.30 server (section 1b). The
 Windows server (`DayZServer_x64.exe`) takes the same parameters; its lookup is described at the end.
 
 ## 1. Use the server the Steam client already installed
@@ -63,6 +64,35 @@ user:
 > `steam steam://install/223350` to open the install dialog. Tell me when it has finished.
 
 After they confirm, run the script again. Continue only once it exits 0 with `StateFlags` 4.
+
+## 1b. Stable and experimental: test on both
+
+While a new version is on Experimental (1.30 until its stable release on Oct 15, 2026), a mod has to
+load on the stable server *and* the experimental one. Steam installs them as separate apps:
+
+| | Server | Client | Workshop items |
+|---|---|---|---|
+| Stable | 223350, `DayZServer` | 221100, `DayZ` | `workshop/content/221100` |
+| Experimental | 1042420, `DayZ Server Exp` | 1024020, `DayZ Exp` | `workshop/content/1024020` |
+
+```sh
+"${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e -v    # experimental server
+"${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e -w    # experimental client's workshop dir
+TREE29=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-test-129)
+TREE30=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-test-130 "$("${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e)")
+```
+
+- One tree per version. They may run at the same time (separate trees, separate random ports), and the
+  same mod build can be symlinked into both. One PBO serves both versions when version-specific code is
+  behind `#ifdef DAYZ_1_29` (see `compatibility/version-130.md`).
+- The experimental install dir contains a space (`DayZ Server Exp`): always quote it.
+- Experimental is a diag build (`DEVELOPER`, `DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL` in the defines line).
+  More vanilla diag code runs, `Error()`/`ErrorEx()` print as `Virtual Machine Exception`, and some
+  `SCRIPT (E)` lines (e.g. `Leaked 'BunkerBroadcastManager'`) are vanilla noise: compare with a vanilla run.
+- The engine version is in the `defines:` part of the `Module: ...` log lines (`DAYZ_1_29` / `DAYZ_1_30`)
+  and at the top of the RPT (`Version 1.30.164014.27`).
+- On 1.30 experimental, a script compile error was followed by a **segfault** of the server. A crash right
+  after boot usually means: read `script_*.log` for `Can't compile`.
 
 ## 2. Never write into the Steam install: build your own server tree
 
@@ -138,12 +168,22 @@ uses the ports next to its game port. Apply them in the tree before the first st
 | Port | Where to set it |
 |---|---|
 | game | `-port=$GAME` on the command line |
-| Steam query | `steamQueryPort = $QUERY;` in the tree's `serverDZ.cfg` (add the line if the file has none) |
+| Steam query | `steamQueryPort = $QUERY;` in the tree's `serverDZ.cfg` (add the line if the file has none; see below) |
 | RCon | `RConPort $RCON` in the BattlEye seed config `$TREE/profiles/battleye/beserver_x64.cfg` (see below) |
 
 The Steam install's `serverDZ.cfg` has no port lines, so a fresh tree runs on the built-in
 defaults until you add them. Pick new ports for every tree and every run: they are only free at
 the moment `free-ports.sh` checks them.
+
+**Add the query port at the top of `serverDZ.cfg`, not with `echo >>`.** The stock file ends with `};`
+and no newline, so an appended line becomes `};steamQueryPort = ...;`. The next `sed '/steamQueryPort/d'`
+then deletes the closing brace too, and the server exits with `Missing '}'`. Insert it once at the top and
+replace it in place afterwards:
+
+```sh
+grep -q '^steamQueryPort' "$TREE/serverDZ.cfg" || sed -i '1i steamQueryPort = 0;' "$TREE/serverDZ.cfg"
+sed -i "s/^steamQueryPort = .*/steamQueryPort = $QUERY;/" "$TREE/serverDZ.cfg"
+```
 
 **The RCon config lives in the profile directory, not in `battleye/`.** With
 `-profiles=profiles` the server reads `$TREE/profiles/battleye/beserver_x64.cfg` once, writes
@@ -222,7 +262,7 @@ grep -h 'MyMod' "$TREE"/profiles/script_*.log                # your own Print() 
 ```
 
 1. **Did the scripts load at all?** First run the same command without `-servermod` to get the
-   vanilla baseline: 416 Game-module files on 1.29. With the mod, the count must be higher, by the
+   vanilla baseline: 416 Game-module files on 1.29.163709, 440 on 1.30.164014 experimental. With the mod, the count must be higher, by the
    number of script files in that module. **An unchanged count means the mod's scripts were not
    loaded**, even though the server started fine and printed no error.
 
@@ -230,7 +270,10 @@ grep -h 'MyMod' "$TREE"/profiles/script_*.log                # your own Print() 
    - an absolute mod path;
    - a PBO without the prefix header that `config.cpp`'s script paths expect. Packing with
      dayz-dev-tools needs `pbo -H prefix=<prefix> ...`; AddonBuilder uses `-prefix=`. Without it,
-     the defines from `CfgMods` show up in the log, but no scripts do.
+     the defines from `CfgMods` show up in the log, but no scripts do;
+   - file names inside the PBO that repeat the prefix (`MyMod/config.cpp` under prefix `MyMod` becomes
+     `MyMod\MyMod\config.cpp`). Pack from inside the addon folder:
+     `cd build/MyMod && pbo -H prefix=MyMod ../../@MyMod/addons/MyMod.pbo $(find . -type f | sed 's|^\./||')`.
 2. **Did they compile?** `SCRIPT    (E)` lines are compile errors. The tag is space-padded, so
    grepping for the literal `SCRIPT (E)` never matches.
 3. **Did your code run?** Add a `Print("MyMod: loaded ...")` to a mission or init hook. It is the

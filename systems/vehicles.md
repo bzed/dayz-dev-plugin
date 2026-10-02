@@ -233,6 +233,25 @@ modded class CarScript
 }
 ```
 
+## 1.30 Vehicle Changes (CRITICAL; experimental, stable Oct 15, 2026)
+
+Full list and tested dual-version code: `compatibility/version-130.md`.
+- **Custom light classes are ignored.** `CreateFrontLight()`/`CreateRearLight()` are obsolete and never
+  called. `CarScript` builds a `VehicleLightsComponent` (`m_LightsComponent`); every car registers profiles in
+  its constructor: `m_LightsComponent.RegisterLight("Front", new VehicleLightData(new MyCarLightProfileFront()))`
+  (`VehicleLightProfileFront` / `VehicleLightProfileBrakeAndReverse` subclasses), plus `RegisterSelection(...)`
+  for selection materials. Keep `CreateFrontLight` under `#ifdef DAYZ_1_29` for 1.29.
+- `CarScript.ToggleHeadlights()` removed → `LightToggle()` (works on 1.29 too). Light helper methods
+  (`BrakesRearLight`, `TailLightsShineOn`, ...) and `IsVitalCarBattery/IsVitalTruckBattery` are obsolete →
+  `Transport.NeedElectricitySourceDevice()`.
+- About 20 `CarScript` methods moved up to `Transport` (sounds, `EEHitBy`, `OnContact`, `IsVitalFuelTank`,
+  `IsVitalGlowPlug`, ...), shared with boats and the new **motorbikes** (`Motorbike : Transport`, `MotorbikeScript`).
+- Horn: `VehicleHornComponent` (`Transport.GetVehicleHornComponent()`), actions `ActionVehicleHornShort/Long`,
+  inputs `VehicleHornShort/LongActionInput`. `ActionCarHorn*` obsolete, `CarHorn*ActionInput` and
+  `GenerateCarHornAINoise` removed.
+- Fluids: `Transport.FillScript/GetFluidCapacityScript/GetFluidFractionScript(ETransportFluid, ...)`.
+- `cfggameplay.json`: `canDetachAttachedCarWheels`, `canDamageAttachedCarWheels`, `...BikeWheels`.
+
 ## 1.29 Vehicle Changes (CRITICAL)
 
 ### Headlights are native now
@@ -242,7 +261,7 @@ Light state lives on `Transport` (cars and boats):
 car.LightIsOn();     // replaces reading m_HeadlightsOn / IsScriptedLightsOn()
 car.LightOn();
 car.LightOff();
-car.LightToggle();   // what ToggleHeadlights() calls now
+car.LightToggle();   // what ToggleHeadlights() called; ToggleHeadlights() is removed in 1.30
 
 modded class CarScript
 {

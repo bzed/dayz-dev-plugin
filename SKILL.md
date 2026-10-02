@@ -1,6 +1,6 @@
 ---
 name: dayz-dev
-description: DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 (1.28 notes kept).
+description: DayZ Enforce Script development orchestrator for DayZ 1.29 (stable) and 1.30 (experimental, stable release Oct 15, 2026). Dynamically fetches class APIs, script references, and mod documentation; supports vanilla, Community Framework, and Expansion. Use it for any DayZ mod or server scripting work, and especially when reviewing or porting a mod for 1.30, keeping one mod working on both 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30 defines), FindFile or $profile/$mission/$storage path problems, backslash paths, experimental-server crashes or compile errors, OnCEUpdate/ProcessVariables/vehicle-light/inventory API changes, or testing a mod on a local stable or experimental dedicated server.
 allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*)
 ---
 
@@ -8,7 +8,8 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 
 > **Dynamic documentation orchestrator** for DayZ mod development.
 > Supports vanilla Enforce Script, Community Framework (CF), and DayZ Expansion.
-> Target version: **DayZ 1.29 (v1.29.163709)** - 1.28 notes kept for migration
+> Target versions: **DayZ 1.29 (v1.29.163709, stable)** and **1.30 (v1.30.164014, experimental; stable release Oct 15, 2026)**.
+> Until 1.30 is stable, code must run on **both**. 1.28 notes kept for migration.
 
 ## Philosophy
 
@@ -17,6 +18,30 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 3. **Enforce Script correctness** - DayZ uses Enforce Script (C-like), NOT C#/C++/Lua
 4. **Server-side validation** - Never trust client-side data
 5. **Null-safe always** - Every Cast<>, GetInventory(), GetIdentity() must be null-checked
+
+---
+
+## Two Releases at Once (1.29 stable + 1.30 experimental)
+
+Every mod change has to keep working on 1.29 and be correct on 1.30. Read `compatibility/version-130.md`
+for any review, port or "does this still work" question. The essentials, all verified on real servers:
+
+- **The engine defines the version**: `DAYZ_1_29` on 1.29, `DAYZ_1_30` on 1.30 (only the current one).
+  Put the *old* code under `#ifdef DAYZ_1_29` and the new code in `#else`, so the new path stays the default
+  on 1.31+. The same PBO then loads on both. Prefer APIs that exist in both versions over `#ifdef`.
+- **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:` on 1.30** and silently searches the
+  server root instead. Wrap every pattern with `compatibility/YOURMOD_FindFilePath.c`. All other file
+  functions still accept the placeholders.
+- **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
+- **Compile breakers**: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
+  `Construction.SetParent(EntityAI)`, `CarScript.ToggleHeadlights()` removed (use `LightToggle()`).
+- **Silent breakers**: `OnCEUpdate()` overrides compile but are never called (use `OnCEIterate`);
+  custom car `CreateFrontLight()` is never called (use `VehicleLightsComponent` profiles).
+- **Experimental is a diag build** (`DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL`): never use those defines as
+  "is 1.30", and expect `Error()`/`ErrorEx()` to show up as VM exceptions there.
+- Remote API references (diff.yadz.app, DayZ-Script-Diff) may still show 1.29. When a local copy of the
+  1.30 scripts exists (ask the user; e.g. a git with `1.29`/`1.30` tags), check signatures there, or use
+  `https://diff.yadz.app/v/experimental/`.
 
 ---
 
@@ -46,7 +71,7 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 ### Verification Sources:
 | Type | Source | Action |
 |------|--------|--------|
-| Script API (latest, 1.29) | https://diff.yadz.app/ | `api.json` via Bash/jq, or WebFetch `classes/<Name>/` |
+| Script API (latest stable, 1.29; `/v/experimental/` for 1.30) | https://diff.yadz.app/ | `api.json` via Bash/jq, or WebFetch `classes/<Name>/` |
 | Build diff / changelog | https://diff.yadz.app/changelog/ | API diff between any two builds (JS page - use Script Diff git for exact diffs) |
 | Deprecated APIs | https://diff.yadz.app/deprecated/ | Everything marked `[Obsolete]` |
 | Script Diff (official) | https://github.com/BohemiaInteractive/DayZ-Script-Diff | Check exact source code |
@@ -104,7 +129,9 @@ if (player)
 | `config/types-xml.md` | types.xml, economy system | Loot spawning |
 | `config/server-config.md` | Server configuration files | Server setup |
 | `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
-| `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current) |
+| `compatibility/version-130.md` | 1.30 changes, dual 1.29/1.30 targeting, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths, experimental server |
+| `compatibility/YOURMOD_FindFilePath.c` | Tested FindFile path helper for 1.29 + 1.30 | Any code that calls `FindFile` |
+| `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current stable) |
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 
 ---
@@ -123,7 +150,7 @@ if (player)
 | Script diff between versions | **FETCH from DayZ-Script-Diff repo** |
 | Server configuration | **FETCH from DZconfig wiki** |
 | Mod structure, best practices | **READ local files** |
-| 1.28 / 1.29 compatibility/changes | **READ local compatibility files** |
+| 1.28 / 1.29 / 1.30 compatibility/changes | **READ local compatibility files** |
 
 ### Step 2: WebFetch URLs
 
@@ -287,14 +314,20 @@ WebFetch(
 
 **Action:** Read local `config/server-config.md` + Fetch from DZconfig wiki
 
-### RULE 7: Version Compatibility (1.29 / 1.28)
+### RULE 7: Version Compatibility (1.30 / 1.29 / 1.28)
 **Triggers when:**
+- "1.30", "experimental", "Oct 15", "DAYZ_1_29", "DAYZ_1_30", "review for 1.30", "works on both"
+- `FindFile`, `$profile:`, `$mission:`, `$storage:`, backslash paths, `OnCEUpdate`, `OnCEIterate`, `ProcessVariables`,
+  `VehicleLightsComponent`, `CreateFrontLight`, `TakeEntityToCargo`, `CombinationLock`, `Construction`
 - "1.29", "1.28", "update", "breaking change", "migration", "compatibility"
 - `ActiveState`, `LightIsOn`, `m_HeadlightsOn`, `EntityType`, `GizmoApi`, `GetCachedEquipment`, juncture `userData`
 - `sealed`, `Obsolete`, `Contact`, `SurfaceProperties`
 - "vehicle brake", "useNewNetworking", "parameter limit", "headlights"
 
-**Action:** Read local `compatibility/version-129.md` (current); `compatibility/version-128.md` for 1.27 → 1.28.
+**Action:** Read local `compatibility/version-130.md` for anything touching 1.30, and keep the result working on 1.29
+(the `DAYZ_1_29` pattern there). For a mod review, walk its checklist (§8) and report findings per item with
+file:line, then fix with dual-version code. `compatibility/version-129.md` covers 1.28 → 1.29,
+`compatibility/version-128.md` 1.27 → 1.28.
 For changes between two specific builds, diff the DayZ-Script-Diff commits listed in
 https://diff.yadz.app/assets/versions.json.
 
@@ -304,7 +337,8 @@ https://diff.yadz.app/assets/versions.json.
 - `DayZServer`, `-servermod`, `-mod=`, `script_*.log`, `.RPT`, "compile error", "mod not loading"
 
 **Action:** Read local `testing/local-server.md`. Locate the server with
-`${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh` (Steam app 223350); if it is missing, ask the
+`${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh` (Steam app 223350; `-e` finds the Experimental
+Server, app 1042420). While 1.30 is on experimental, boot every change on **both**, one tree each. If one is missing, ask the
 user to install it through Steam - do not set up steamcmd unless they ask. **Never copy, edit or
 write anything in the Steam directories**: run the server from a tree of your own made by
 `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>`, with mods symlinked into it
@@ -437,7 +471,13 @@ MyMod/
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
 | Hardcode framework dependencies | Detect at runtime via config.cpp |
 | Skip null checks on Cast<> | Always check before using result |
-| Write files outside `$saves:`/`$profile:` | FileIO only works in those directories |
+| Write files outside `$profile:`/`$saves:`/`$mission:` | Server FileIO is sandboxed to those (`$storage:` does not work for file functions) |
+| `FindFile("$profile:...")` | `FindFile(YOURMOD_FindFilePath("$profile:..."))` - 1.30 ignores placeholders in `FindFile` |
+| Backslashes in paths (`"$profile:MyMod\\cfg.json"`) | Forward slashes (`"$profile:MyMod/cfg.json"`) - required for `FindFile` on 1.30 |
+| `g_Game.GetMissionFolderPath()` | Folder of `g_Game.GetMissionPath()` - the former is `""` on servers |
+| `override void OnCEUpdate()` | `OnCEIterate(float currentTime, float elapsedTime)` on 1.30 (`#ifdef DAYZ_1_29` for the old one) |
+| New-version code under `#ifdef DAYZ_1_30` | Old code under `#ifdef DAYZ_1_29`, new code in `#else` (stays on for 1.31+) |
+| `#ifdef BUILD_EXPERIMENTAL`/`DIAG_DEVELOPER` as "is 1.30" | `DAYZ_1_29`/`DAYZ_1_30` - the diag defines vanish on stable |
 | Unqualified member names in modded classes | Prefix with mod name: `m_MyMod_VarName` |
 
 ---
@@ -529,4 +569,4 @@ class MyEntity extends ItemBase
 | UI/HUD design | Read `scripting/` files for Widget system |
 | Server administration | Read `config/server-config.md` |
 | Expansion modding | Read `frameworks/expansion.md` |
-| Version migration | Read `compatibility/version-129.md` (and `version-128.md` for older mods) |
+| Version migration | Read `compatibility/version-130.md` (1.30 + dual targeting), `version-129.md`, `version-128.md` |

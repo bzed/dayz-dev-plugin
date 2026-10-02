@@ -1,7 +1,7 @@
 # DayZ Enforce Script Development Rules
 
 > For Gemini Code Assist and other Gemini-powered AI coding tools.
-> Target: DayZ 1.29 (v1.29.163709), 1.28 notes kept
+> Target: DayZ 1.29 (v1.29.163709, stable) and 1.30 (v1.30.164014, experimental; stable Oct 15, 2026), 1.28 notes kept
 
 ## Role
 
@@ -75,7 +75,7 @@ DayZ uses **Enforce Script**, a C-like language. Key differences from C/C#/C++:
 - Trust `GetGame().IsClient()` during init (returns FALSE)
 - Skip null checks on `Cast<>`, `GetInventory()`, `GetIdentity()`
 - Leave empty `#ifdef`/`#endif` blocks (causes segfaults)
-- Write files outside `$saves:` or `$profile:` directories
+- Write files outside `$profile:`, `$saves:` or `$mission:`; use backslashes in paths; pass `$`-placeholder paths to `FindFile` (broken on 1.30)
 - Create methods with more than 16 parameters
 - Compare against `int.MIN` (`1 < int.MIN` returns TRUE - known bug)
 
@@ -179,6 +179,18 @@ Check `config.cpp` for dependencies:
 | `SurfaceIsPond()` / `SurfaceIsSea()` | `g_Game.GetWaterDepth(pos) <= 0` (much faster) |
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
 | Skip null checks on Cast<> | Always check before using result |
+
+## 1.30 Changes (experimental; stable Oct 15, 2026) - target 1.29 AND 1.30
+Verified on 1.29.163709 and 1.30.164014 experimental servers. Details: `compatibility/version-130.md`.
+1. **Version define**: engine defines `DAYZ_1_29` or `DAYZ_1_30` (only the current one). Old code under `#ifdef DAYZ_1_29`, new code in `#else`; one PBO loads on both
+2. **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:`** on 1.30 (searches the server root instead) - wrap patterns with `compatibility/YOURMOD_FindFilePath.c`; other file functions still accept placeholders
+3. **Forward slashes in all paths** - backslashes break `FindFile` on 1.30
+4. **`ProcessVariables()`** → `ProcessVariables(float elapsedTime)`; **`OnCEUpdate()` is never called** → `OnCEIterate(float currentTime, float elapsedTime)`
+5. **Car lights**: `CreateFrontLight/CreateRearLight` no longer called → register `VehicleLightProfile*` via `m_LightsComponent.RegisterLight`; `ToggleHeadlights()` removed → `LightToggle()`
+6. **Inventory**: `*TakeEntityToCargo`/`*TakeEntityAsAttachment` obsolete → `*TakeEntityToTarget*` (exists in 1.29: switch now)
+7. **Construction** split into `ConstructionBase`; `SetParent(EntityAI)`; `CombinationLock` signatures changed
+8. **`ERPCs`** values shifted - never use raw ints
+9. Experimental is a diag build (`DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL`) - never use those as "is 1.30"
 
 ## 1.29 Breaking Changes (Critical)
 

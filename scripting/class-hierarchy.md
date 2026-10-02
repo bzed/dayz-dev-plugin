@@ -183,7 +183,7 @@ bool CanAddEntityInCargo(EntityAI e, bool flip);
 bool CanAddAttachment(EntityAI item);
 EntityAI CreateEntityInCargo(string type);
 EntityAI CreateAttachment(string type);
-bool TakeEntityToCargo(InventoryMode mode, EntityAI item);
+bool TakeEntityToCargo(InventoryMode mode, EntityAI item);   // [Obsolete] 1.30: TakeEntityToTargetCargo(mode, target, item), exists in 1.29
 bool TakeEntityToInventory(InventoryMode mode, FindInventoryLocationType flags, EntityAI item);
 bool FindFreeLocationFor(EntityAI item, FindInventoryLocationType flags, out InventoryLocation loc);
 int CountInventory();                // number of items in this inventory

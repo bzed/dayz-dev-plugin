@@ -1,25 +1,33 @@
 #!/bin/sh
-# Find the DayZ Server (Steam app 223350) installed by the local Steam client.
+# Find the DayZ Server (Steam app 223350, or the Experimental Server 1042420 with -e) installed
+# by the local Steam client.
 #
 # Prints the install directory on stdout and exits 0. Exits 1 with install instructions on
 # stderr when no Steam library has it. Nothing is changed; only Steam's own metadata is read:
 # every library listed in steamapps/libraryfolders.vdf is checked for appmanifest_223350.acf
 # (the manifest is authoritative, the "apps" list in libraryfolders.vdf can lag behind).
 #
-# Usage: find-dayzserver.sh [-v]   -v also prints build id and install state on stderr
-#        find-dayzserver.sh -w     print the DayZ client's workshop directory instead
-#                                  (steamapps/workshop/content/221100, one dir per mod id)
+# Usage: find-dayzserver.sh [-e] [-v]   -v also prints build id and install state on stderr
+#        find-dayzserver.sh [-e] -w     print the DayZ client's workshop directory instead
+#                                       (steamapps/workshop/content/221100, one dir per mod id)
+#        -e  Experimental branch: server app 1042420 ("DayZ Server Exp"), client app 1024020
+#            ("DayZ Exp"), whose workshop items live under content/1024020
 # Env:   STEAM_ROOT   check this Steam root first
 set -eu
 
 APPID=223350
 CLIENT_APPID=221100
+SERVER_NAME="DayZ Server"
 verbose=0
 workshop=0
-case "${1:-}" in
-    -v) verbose=1 ;;
-    -w) workshop=1 ;;
-esac
+for arg in "$@"; do
+    case "$arg" in
+        -v) verbose=1 ;;
+        -w) workshop=1 ;;
+        -e) APPID=1042420; CLIENT_APPID=1024020; SERVER_NAME="DayZ Experimental Server" ;;
+        *) echo "usage: $0 [-e] [-v|-w]" >&2; exit 2 ;;
+    esac
+done
 
 # Steam roots of the native, Debian/Ubuntu, Flatpak and Snap packages, and macOS.
 roots="${STEAM_ROOT:-}
@@ -84,11 +92,11 @@ EOF
 
 if [ "$found" != 0 ]; then
     cat >&2 <<EOF
-DayZ Server (Steam app $APPID) is not installed in any Steam library found:
+$SERVER_NAME (Steam app $APPID) is not installed in any Steam library found:
 $(if [ -n "$libraries" ]; then printf '%s\n' "$libraries" | sed 's/^/  /'; else echo "  (no Steam installation found; set STEAM_ROOT if it is elsewhere)"; fi)
 
 Install it with the Steam client (the account must own DayZ): in the Library enable the
-"Tools" filter and install "DayZ Server", or open the install dialog with
+"Tools" filter and install "$SERVER_NAME", or open the install dialog with
 
   steam steam://install/$APPID        (or: xdg-open steam://install/$APPID)
 

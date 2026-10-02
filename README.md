@@ -3,7 +3,7 @@
 A comprehensive plugin for DayZ mod development with Enforce Script. Provides dynamic documentation fetching, framework support for vanilla, Community Framework, and DayZ Expansion.
 
 **Supports:** Claude Code, Gemini Code Assist, Cursor, Windsurf, and other AI coding assistants.
-**Target Version:** DayZ 1.29 (v1.29.163709), with 1.28 migration notes
+**Target Versions:** DayZ 1.29 (v1.29.163709, stable) and 1.30 (v1.30.164014, experimental; stable Oct 15, 2026), with 1.28 migration notes
 
 ## Features
 
@@ -11,7 +11,7 @@ A comprehensive plugin for DayZ mod development with Enforce Script. Provides dy
 - **Multi-Framework Support** - Vanilla, Community Framework (CF), DayZ Expansion with auto-detection
 - **Enforce Script Correctness** - Never outputs C#/C++ syntax, always uses proper Enforce Script
 - **No-Hallucination Policy** - Verifies all classes, methods, and config tokens against documentation
-- **1.29 / 1.28 Compatibility** - Breaking changes, migration guides, and new features, verified against DayZ-Script-Diff
+- **1.30 / 1.29 / 1.28 Compatibility** - Breaking changes, migration guides, and new features; 1.30 verified on stable and experimental dedicated servers, including how to keep one mod working on both
 - **Best Practices** - Null safety, server/client context, memory management, performance patterns
 
 ## Installation
@@ -59,6 +59,8 @@ The skill activates automatically when you ask DayZ-related questions:
 - "How does the CF RPCManager work?"
 - "Show me the Expansion market trader config"
 - "What broke in 1.29?"
+- "Review my mod for 1.30 without breaking 1.29"
+- "Why does FindFile not find my JSON files on experimental?"
 
 ### Command
 
@@ -69,6 +71,7 @@ Use the `/dayz-dev` command for direct queries:
 /dayz-dev What are the NetSync variable types?
 /dayz-dev Expansion quest system setup
 /dayz-dev 1.29 vehicle headlight changes
+/dayz-dev review @MyMod for 1.30
 ```
 
 ## Documentation Sources
@@ -94,9 +97,9 @@ Use the `/dayz-dev` command for direct queries:
 | `systems/` | Mod structure, networking, inventory, actions, weapons, vehicles |
 | `frameworks/` | Framework detection, Community Framework, Expansion |
 | `config/` | config.cpp, types.xml, server configuration |
-| `compatibility/` | Version 1.29 and 1.28 breaking changes and migration guides |
-| `testing/` | Testing a mod headless on the Steam-installed local DayZ Server |
-| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350 and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), installer |
+| `compatibility/` | Version 1.30, 1.29 and 1.28 breaking changes and migration guides; tested `FindFile` path helper |
+| `testing/` | Testing a mod headless on the Steam-installed local DayZ Server (stable and experimental) |
+| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350, or 1042420 experimental with `-e`, and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), installer |
 | `commands/` | `/dayz-dev` slash command template |
 
 ## What's Covered
@@ -126,6 +129,12 @@ Use the `/dayz-dev` command for direct queries:
 - types.xml and Central Economy
 - Server configuration (serverDZ.cfg, cfgGameplay.json)
 - 1.28 enhanced spawnabletypes.xml
+
+### 1.30 Compatibility (experimental, stable Oct 15, 2026)
+- Dual targeting with the engine's `DAYZ_1_29` / `DAYZ_1_30` defines (one PBO for both)
+- `FindFile` ignores `$profile:`/`$mission:` placeholders and backslashes on 1.30: tested helper `compatibility/YOURMOD_FindFilePath.c`
+- Compile breakers (`ProcessVariables(float)`, `Construction.SetParent`, `ToggleHeadlights`), silent breakers (`OnCEUpdate` never called, car light profiles), obsolete inventory API, ERPCs shift
+- Review checklist; every key claim tested on 1.29.163709 and 1.30.164014 dedicated servers
 
 ### 1.29 Compatibility
 - `GetGame()` now a script wrapper around `g_Game`, `ActiveState` enum reorder, native vehicle headlights

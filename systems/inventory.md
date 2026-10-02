@@ -88,6 +88,20 @@ player.PredictiveTakeToDst(loc, item);
 player.ServerTakeEntityToInventory(item);
 ```
 
+### 1.30: name the target explicitly
+The `*TakeEntityToCargo`, `*TakeEntityAsAttachment(Ex)` and `*TakeEntityToCargoEx` calls (Predictive/Local/
+Server/Juncture on players, `GameInventory.TakeEntity*`) are `[Obsolete]` in 1.30 and moved from `Man` to
+`EntityAI`. The replacements take the target entity and **already exist in 1.29**, so switch now; they
+compile on both without `#ifdef` (tested):
+```c
+player.ServerTakeEntityToTargetCargo(targetEntity, item);                 // was ServerTakeEntityToCargo(item)
+player.PredictiveTakeEntityToTargetAttachment(targetEntity, item);        // was PredictiveTakeEntityAsAttachment(item)
+player.PredictiveTakeEntityToTargetAttachmentEx(targetEntity, item, slotId);
+player.PredictiveTakeEntityToTargetCargoEx(cargo, item, row, col);       // CargoBase, not the entity
+player.GetInventory().TakeEntityToTargetCargo(InventoryMode.SERVER, targetEntity, item);
+```
+To keep the old behaviour of "into the player's own cargo/attachments", pass the player as `targetEntity`.
+
 ## Removing Items
 
 ```c

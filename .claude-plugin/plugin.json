@@ -1,6 +1,6 @@
 {
   "name": "dayz-dev",
-  "description": "DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 (and 1.28).",
+  "description": "DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 stable and 1.30 (dual-version targeting, 1.30 migration review, local stable/experimental server testing).",
   "author": {
     "name": "Chaos",
     "email": ""

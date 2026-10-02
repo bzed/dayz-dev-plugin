@@ -287,5 +287,6 @@ Check the current CF and Expansion releases on the Workshop / GitHub before rele
 framework versions for 1.29 (no verified minimum available at time of writing).
 
 ## Looking Ahead: 1.30
-1.30 Experimental (1.30.164014, Sep 16, 2026) is browsable on diff.yadz.app (`/v/experimental/`); its
-mod-check uses the DayZ Script Diff Experimental snapshot. `SetPlayerLoad`/`AddPlayerLoad` are flagged for removal in 1.30.
+1.30 (experimental since Sep 16, 2026, stable release Oct 15, 2026) is covered in `version-130.md`,
+including how to keep one mod working on 1.29 and 1.30 at the same time (`DAYZ_1_29` define) and the
+`FindFile` path change. `SetPlayerLoad`/`AddPlayerLoad` are still present (`[Obsolete]`) in 1.30.164014.
