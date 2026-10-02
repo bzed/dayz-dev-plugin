@@ -97,18 +97,17 @@ Consequences:
   string fileName;
   FileAttr attr;
   FindFileHandle h = FindFile(YOURMOD_FindFilePath("$profile:YOURMOD/*.json"), fileName, attr, FindFileFlags.ALL);
-  if (fileName != "")   // first match comes back in fileName; "" = nothing found
+  bool found = fileName != "";   // first match comes back in fileName; "" = nothing found
+  while (found)
   {
-      do
-      {
-          // fileName is a bare name: open it with the placeholder path, not the resolved one
-          MyMod_Load("$profile:YOURMOD/" + fileName);
-      }
-      while (FindNextFile(h, fileName, attr));
+      // fileName is a bare name: open it with the placeholder path, not the resolved one
+      MyMod_Load("$profile:YOURMOD/" + fileName);
+      found = FindNextFile(h, fileName, attr);
   }
   if (h)
       CloseFindFile(h);
   ```
+  Enforce Script has no `do { } while`: it fails with `Can't find variable 'do'` (tested), so use this shape.
 - Resolution sources: `$profile:` ← `-profiles=` CLI param (required; a server started without it can't be
   resolved), `$mission:` ← folder of `g_Game.GetMissionPath()`, `$storage:` ← `-storage=<dir>` if given,
   else `<mission folder>`, plus `/storage_<instanceId>` (`serverDZ.cfg` `instanceId`, default 1).
