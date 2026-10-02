@@ -1,7 +1,7 @@
 {
   "name": "claude-dayz-dev",
   "version": "1.2.0",
-  "description": "Claude Code plugin for DayZ mod development - Enforce Script, Community Framework, and Expansion with dynamic documentation fetching",
+  "description": "Claude Code plugin for DayZ mod development and local DayZ server testing - Enforce Script, Community Framework, and Expansion, DayZ 1.29 and 1.30",
   "keywords": [
     "claude-code",
     "claude-code-plugin",

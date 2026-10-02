@@ -1,6 +1,6 @@
 # DayZ Development Plugin
 
-A comprehensive plugin for DayZ mod development with Enforce Script. Provides dynamic documentation fetching, framework support for vanilla, Community Framework, and DayZ Expansion.
+A comprehensive plugin for DayZ mod development with Enforce Script and for testing local DayZ dedicated servers. Provides dynamic documentation fetching, framework support for vanilla, Community Framework, and DayZ Expansion, and a tested workflow for starting stable and experimental servers headless, with or without mods.
 
 **Supports:** Claude Code, Gemini Code Assist, Cursor, Windsurf, and other AI coding assistants.
 **Target Versions:** DayZ 1.29 (v1.29.163709, stable) and 1.30 (v1.30.164014, experimental; stable Oct 15, 2026), with 1.28 migration notes
@@ -12,6 +12,7 @@ A comprehensive plugin for DayZ mod development with Enforce Script. Provides dy
 - **Enforce Script Correctness** - Never outputs C#/C++ syntax, always uses proper Enforce Script
 - **No-Hallucination Policy** - Verifies all classes, methods, and config tokens against documentation
 - **1.30 / 1.29 / 1.28 Compatibility** - Breaking changes, migration guides, and new features; 1.30 verified on stable and experimental dedicated servers, including how to keep one mod working on both
+- **Local Server Testing** - Find the Steam-installed DayZ Server (stable or experimental), build an isolated server tree, pick free ports, boot it headless and read the logs. Works for a vanilla server, a mission or `serverDZ.cfg` change, or a mod
 - **Best Practices** - Null safety, server/client context, memory management, performance patterns
 
 ## Installation
@@ -61,6 +62,8 @@ The skill activates automatically when you ask DayZ-related questions:
 - "What broke in 1.29?"
 - "Review my mod for 1.30 without breaking 1.29"
 - "Why does FindFile not find my JSON files on experimental?"
+- "Start a local 1.30 experimental server and check that it boots"
+- "Does our serverDZ.cfg / cfggameplay.json change still start on stable?"
 
 ### Command
 

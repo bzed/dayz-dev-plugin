@@ -1,6 +1,6 @@
 ---
 name: dayz-dev
-description: DayZ Enforce Script development orchestrator for DayZ 1.29 (stable) and 1.30 (experimental, stable release Oct 15, 2026). Dynamically fetches class APIs, script references, and mod documentation; supports vanilla, Community Framework, and Expansion. Use it for any DayZ mod or server scripting work, and especially when reviewing or porting a mod for 1.30, keeping one mod working on both 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30 defines), FindFile or $profile/$mission/$storage path problems, backslash paths, experimental-server crashes or compile errors, OnCEUpdate/ProcessVariables/vehicle-light/inventory API changes, or testing a mod on a local stable or experimental dedicated server.
+description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion): class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, keeping one build working on 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods: finding the Steam DayZServer or experimental server, building an isolated server tree, free ports, headless boots, stable and experimental side by side, and reading script logs and RPTs for compile errors or crashes, even when the user only wants to check that a server, mission or serverDZ.cfg starts.
 allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*)
 ---
 
@@ -331,12 +331,15 @@ file:line, then fix with dual-version code. `compatibility/version-129.md` cover
 For changes between two specific builds, diff the DayZ-Script-Diff commits listed in
 https://diff.yadz.app/assets/versions.json.
 
-### RULE 8: Testing a Mod
+### RULE 8: Testing a Mod or a Server
 **Triggers when:**
 - A mod change is about to be called done, or "test", "verify", "does it load", "run the server"
-- `DayZServer`, `-servermod`, `-mod=`, `script_*.log`, `.RPT`, "compile error", "mod not loading"
+- "start a local server", "test server", "does the server start", trying a mission, `serverDZ.cfg` or
+  `cfggameplay.json` change, comparing stable vs experimental - **with or without any mod**
+- `DayZServer`, `-servermod`, `-mod=`, `script_*.log`, `.RPT`, "compile error", "mod not loading", "server crashes"
 
-**Action:** Read local `testing/local-server.md`. Locate the server with
+**Action:** Read local `testing/local-server.md` - it applies to a plain vanilla server just as well
+(skip the mod steps). Locate the server with
 `${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh` (Steam app 223350; `-e` finds the Experimental
 Server, app 1042420). While 1.30 is on experimental, boot every change on **both**, one tree each. If one is missing, ask the
 user to install it through Steam - do not set up steamcmd unless they ask. **Never copy, edit or

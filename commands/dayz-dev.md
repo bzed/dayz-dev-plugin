@@ -1,5 +1,5 @@
 ---
-description: "DayZ development helper - fetch script API, config references, mod documentation"
+description: "DayZ development helper - script API, config references, mod docs, 1.29/1.30 porting, local server testing"
 argument-hint: "<query>"
 allowed-tools: [Read, Glob, Grep, WebFetch, WebSearch]
 ---
