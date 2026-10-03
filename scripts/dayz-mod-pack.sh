@@ -12,7 +12,9 @@
 #   build/@<MyMod>/     the Workshop content folder: addons/*.pbo + *.bisign, keys/, mod.cpp
 #
 # Usage: dayz-mod-pack.sh [-C <projectdir>] <command> [options]
-#   init <ModName>          create the folders, .gitignore, .workshopignore, mod.cpp stub
+#   init <ModName> [--servermod]
+#                           create the folders, .gitignore, .workshopignore, mod.cpp stub; WORKSHOP_TAGS in
+#                           .dayzmod defaults to "Mod" ("Mod Server" with --servermod)
 #   keygen                  create secrets/<Key>.biprivatekey and keys/<Key>.bikey (refuses to overwrite)
 #   build [--no-bin] [--v2] [--binarize-models]
 #                           build+sign every src/<Addon>/ and assemble build/@<ModName>/
@@ -51,6 +53,7 @@ load_conf() {
     . "$PROJECT/.dayzmod"
     [ -n "${MOD_NAME:-}" ] || die ".dayzmod does not set MOD_NAME"
     KEY_NAME=${KEY_NAME:-$MOD_NAME}
+    WORKSHOP_TAGS=${WORKSHOP_TAGS:-Mod}
     CONTENT="$PROJECT/build/@$MOD_NAME"
 }
 
@@ -128,10 +131,12 @@ stage_models() {
 }
 
 cmd_init() {
-    local name=${1:?usage: init <ModName>}
+    local name=${1:?usage: init <ModName> [--servermod]} tags="Mod"
+    [ "${2:-}" = "--servermod" ] && tags="Mod Server"
     case "$name" in *[!A-Za-z0-9_]*|"") die "ModName may only contain letters, digits and _ (it becomes the key name and the PBO prefix)";; esac
     mkdir -p "$PROJECT/src" "$PROJECT/keys" "$PROJECT/secrets" "$PROJECT/static"
-    [ -f "$PROJECT/.dayzmod" ] || printf 'MOD_NAME=%s\n' "$name" > "$PROJECT/.dayzmod"
+    # WORKSHOP_TAGS: Steam Workshop tags for app 221100. "Mod" is required; "Server" marks server-side content.
+    [ -f "$PROJECT/.dayzmod" ] || printf 'MOD_NAME=%s\nWORKSHOP_TAGS="%s"\n' "$name" "$tags" > "$PROJECT/.dayzmod"
 
     # .gitignore: append only the lines that are missing, never rewrite the user's file.
     touch "$PROJECT/.gitignore"
@@ -184,8 +189,9 @@ cmd_keygen() {
 
 # meta.cpp is what the official DayZ Publisher adds to the upload (protocol, publishedid, name, timestamp).
 # The `workshop` uploader does not, so we write it. Before the item exists (no workshop.toml / item_id) the
-# publishedid is 0, which is what first uploads commonly carry (0 = unpublished); once workshop.toml holds
-# the item_id, every build writes the real id.
+# publishedid is 0 (0 = unpublished), which is what the Windows tools upload on a first publish. That works for
+# server mods but NOT for client mods, so a client mod must be updated with the real id before it is made public;
+# once workshop.toml holds the item_id, every build writes the real id.
 # timestamp = .NET DateTime.ToBinary() of the UTC time: (unix + 62135596800) * 1e7 + 2^62 (checked against CF's meta.cpp).
 write_meta() {
     local toml="$CONTENT/workshop.toml" id=0
@@ -266,6 +272,18 @@ cmd_build() {
     ( cd "$CONTENT" && find . -type f | sort | sed 's|^\./|   |' )
 }
 
+# Tags seen on the 438 DayZ Workshop items checked (Steam API): every item has Mod; Server marks server-side content.
+KNOWN_TAGS="Mod Server Mechanics Equipment Environment Props Character Terrain Sound Economy Vehicle Animation Weapon"
+check_tags() {
+    local t ok=1 hasmod=0
+    for t in $WORKSHOP_TAGS; do
+        [ "$t" = Mod ] && hasmod=1
+        case " $KNOWN_TAGS " in *" $t "*) ;; *) echo "warn: tag '$t' is not one of the tags seen on DayZ items ($KNOWN_TAGS)"; ;; esac
+        [ "$t" = "Tag Review" ] && echo "warn: 'Tag Review' is a moderation tag; do not set it yourself"
+    done
+    if [ "$hasmod" = 1 ]; then echo "ok: tags: $WORKSHOP_TAGS"; else echo "FAIL: WORKSHOP_TAGS must contain Mod (the Publisher rejects PBOs without it)" >&2; return 1; fi
+}
+
 cmd_check() {
     load_conf; need_armake2
     local bad=0 f
@@ -296,6 +314,7 @@ cmd_check() {
         elif grep -q 'publishedid *= *0;' "$CONTENT/meta.cpp" && [ -f "$CONTENT/workshop.toml" ]; then
             echo "warn: meta.cpp still has publishedid = 0 but workshop.toml exists; run build again"; fi
     fi
+    check_tags || bad=1
     for f in "$CONTENT"/addons/*.pbo; do
         [ -f "$f" ] || { echo "note: nothing built yet (run build)"; break; }
         "$ARMAKE2" verify "$PROJECT/keys/$KEY_NAME.bikey" "$f" "$f.$KEY_NAME.bisign" >/dev/null \
@@ -306,6 +325,8 @@ cmd_check() {
 
 cmd_publish_hint() {
     load_conf
+    local tagargs="" t
+    for t in $WORKSHOP_TAGS; do tagargs="$tagargs -t '$t'"; done
     cat <<EOF
 Upload needs the Steam client running and logged in as the account that owns DayZ (app $APP_ID).
 It is a deliberate manual step; review the content folder first:  $CONTENT
@@ -313,11 +334,14 @@ It is a deliberate manual step; review the content folder first:  $CONTENT
 The app id ($APP_ID) is NOT part of mod.cpp: it is passed here and stored in workshop.toml.
 
 First upload (creates the item and writes $CONTENT/workshop.toml; copy it to $PROJECT/workshop.toml and commit it).
-The first upload carries a meta.cpp with publishedid = 0 (the item id does not exist before it). Afterwards run build
-again: it writes the real id from workshop.toml into meta.cpp; publish that with the update command below:
+The first upload carries a meta.cpp with publishedid = 0 (the item id does not exist before it), exactly like the Windows
+tools; that is broken for client mods (fine for servermods). So the item is created private: afterwards run build
+again (it writes the real id from workshop.toml into meta.cpp), publish that with the update command below, and
+only then make the item public in Steam:
   workshop create --app-id $APP_ID --content "$CONTENT" --title "$MOD_NAME" \\
-      --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' --visibility private -m "first upload"
+      --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' --visibility private$tagargs -m "first upload"
 
+Tags ($WORKSHOP_TAGS) are stored in workshop.toml by create; update reuses them (Steam drops tags that are not sent).
 Updates (item id comes from workshop.toml in the content folder):
   workshop update --content "$CONTENT" --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' -m "changelog"
 EOF

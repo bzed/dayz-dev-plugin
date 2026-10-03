@@ -360,7 +360,7 @@ A PBO that builds is not a tested mod: boot it and compare the script module cou
 **Action:** Read local `systems/mod-packaging.md`. Find `armake2` in PATH first and check `armake2 --help` (needs the bzed fork https://github.com/bzed/armake2:
 `paa2img` present; `proton-binarize` present = can binarize models on Linux; upstream fails on DayZ configs); build the fork only if missing or too old. Use it via `${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh` (`init`, `keygen`, `build`, `check`,
 `publish-hint`; `build --binarize-models` also converts models via Proton on Linux). The private key stays in a git-ignored `secrets/`, never in the content folder; never overwrite an
-existing key. Plain `build` rapifies configs only (p3d/rtm stay MLOD unless `--binarize-models`). Uploading to Steam is the user's
+existing key. Workshop tags: `Mod` is required, `Server` marks server-side content (there is no `servermod` tag); `build` writes meta.cpp (publishedid 0 until the item exists; client mods need the real id). Plain `build` rapifies configs only (p3d/rtm stay MLOD unless `--binarize-models`). Uploading to Steam is the user's
 call: print the `workshop` command, do not run it unprompted.
 
 ### RULE 9: Local Knowledge

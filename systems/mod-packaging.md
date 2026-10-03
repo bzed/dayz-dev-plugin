@@ -199,7 +199,7 @@ the official DayZ Publisher (`DayZ Tools/Bin/Publisher`):
 | `addons/*.pbo` (+ `.bisign`) | yes; the Publisher refuses an upload without an `addons` folder in the root, or with `.pbo` files outside it (`addons` and `Addons` both occur) | no | armake2 (`build`, `sign`) |
 | `keys/*.bikey` | in most mods (some server-side-only items have none) | no | `keygen` |
 | `mod.cpp` | 135 of 438 (optional; the launcher shows its fields) | **no, in none of them** | you; `init` writes a stub |
-| `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it (id 0 before the first upload, the real id after) |
+| `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it (id 0 before the first upload, like the Windows tools; the real id after) |
 
 So the assumption "the app id has to be in `mod.cpp`" does not hold. The id travels outside the mod:
 the Publisher reads it from its own `steam_appid.txt` (`221100`), and the `workshop` uploader takes `--app-id 221100`
@@ -222,17 +222,38 @@ timestamp = 5250757174595880000;
 ```
 
 `timestamp` is .NET `DateTime.ToBinary()` of the UTC upload time: `(unix_seconds + 62135596800) * 10^7 + 2^62`
-(decoded CF's value gives 2026-02-19, the build date of its PBO). The `workshop` uploader does not write the file,
-and the item id only exists after the first upload. First uploads commonly carry `publishedid = 0` (0 = unpublished, as in
-`mod-structure.md`), so `dayz-mod-pack.sh build` always writes a `meta.cpp`: id 0 until `workshop.toml` holds an
-`item_id`, the real id afterwards:
+(decoded CF's value gives 2026-02-19, the build date of its PBO). The `workshop` uploader does not write the file, and the item id only exists after the first upload. The official
+Windows tools upload `meta.cpp` with `publishedid = 0` on a first publish (`mod-structure.md`: 0 = unpublished).
+That **does not work for DayZ clients** (server mods are fine with it), but it is what those tools do. So
+`dayz-mod-pack.sh build` always writes a `meta.cpp`, id 0 until `workshop.toml` holds an `item_id`, the real id
+afterwards, and a client mod should go through this sequence rather than being published straight away:
 
-1. `build` (writes `publishedid = 0`), then `workshop create ...`.
+1. `build` (writes `publishedid = 0`), then `workshop create ... --visibility private`.
 2. Copy `build/@MyMod/workshop.toml` to the project root and commit it.
-3. `build` again: `meta.cpp` now carries the real id. Then `workshop update ...`. Every later release is just `build` + `update`.
+3. `build` again: `meta.cpp` now carries the real id. Then `workshop update ...`.
+4. Only then make the item public in Steam. Every later release is just `build` + `update`.
 
-Whether a client or the launcher needs `meta.cpp` (for example to map a folder to its Workshop id) was not
-tested; writing it keeps the upload identical to what the official tool produces.
+A server-only mod can skip steps 2-3. Whether a client needs anything else from `meta.cpp` was not tested.
+
+## Workshop tags
+
+Queried from Steam's public API (`ISteamRemoteStorage/GetPublishedFileDetails`) for the 438 items in a local
+workshop directory (434 still available):
+
+| Tag | Items | Meaning |
+|---|---|---|
+| **`Mod`** | **434 of 434** | required: the Publisher refuses PBO content without it ("PBO files were included but tag 'mod' was not selected") and refuses `Mod` together with `Scenario` |
+| `Server` | 14 | server-side content ("Use this tag to label a server related content" in the Publisher); the 14 include maps, loadout and PVE mods. A *servermod* is therefore `Mod` + `Server`, not a separate `servermod` tag |
+| content tags | | `Mechanics` 118, `Equipment` 103, `Environment` 84, `Props` 75, `Character` 69, `Terrain` 46, `Sound` 38, `Economy` 37, `Vehicle` 32, `Animation` 32, `Weapon` 32 |
+| `Tag Review` | 16 | set by moderation; never set it yourself |
+
+No `servermod` or `Scenario` tag occurs on any of them. Usual combinations: `Mod` alone (167 items), `Mod` + one or more
+content tags, `Mod` + `Server` (8). Pick content tags that describe what the mod adds; there is no required one.
+
+In the script the tags live in `.dayzmod` as `WORKSHOP_TAGS="Mod"` (`init <Name> --servermod` writes
+`"Mod Server"`). `check` fails without `Mod` and warns about unknown tags; `publish-hint` turns them into repeated
+`-t` options. `workshop create -t Mod -t Server ...` stores them in `workshop.toml`, `update` reuses them from there
+(Steam drops tags that are not sent along). Not tested: whether Steam itself rejects an upload without `Mod`.
 
 ## Uploading with `workshop`
 
@@ -241,7 +262,7 @@ be running and logged in as an account that owns DayZ; the DayZ client app id is
 
 ```sh
 # first upload: creates the item and writes workshop.toml into the content folder (the app id goes here, not into mod.cpp)
-workshop create --app-id 221100 --content build/@MyMod --title "My Mod" \
+workshop create --app-id 221100 --content build/@MyMod --title "My Mod" -t Mod \
     --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -m "first upload"
 cp build/@MyMod/workshop.toml workshop.toml && git add workshop.toml     # item id is not secret
 
