@@ -14,14 +14,30 @@ verified with this flow loads with `-mod=@Mod` and `verifySignatures = 2`, and i
 Upstream `KoffeinFlummi/armake2` fails on DayZ configs and lacks things DayZ mods need. Use
 **https://github.com/bzed/armake2** (upstream remote kept, rebased on upstream master). Fork changes:
 preprocessor grammar fixes (`#include` directives, nested macro arguments), `$PREFIX$` accepted when
-building PBOs, `paa2img` / `img2paa`, current Rust and dependency versions, a Dockerfile/`build.sh`,
+building PBOs, `paa2img` / `img2paa`, opt-in `build --proton-binarize` (models via BI binarize.exe under Proton on Linux), current Rust and dependency versions, a Dockerfile/`build.sh`,
 and an end-to-end DayZ test harness (`testharness/run.sh [--both]`: build, sign, boot a server, check logs).
+
+**Look for an installed armake2 first**, then check what it can do; only build the fork if it is missing or too old:
+
+```sh
+command -v armake2 && armake2 --help | grep -c paa2img          # 1 = bzed fork (DayZ fixes), 0 = upstream
+armake2 --help | grep -q proton-binarize && echo "can binarize models (Proton)"
+armake2 --version
+```
+
+| `armake2 --help` shows | Meaning | What to do |
+|---|---|---|
+| no `paa2img` | upstream armake2; fails on DayZ configs | install the fork |
+| `paa2img`, no `proton-binarize` | fork without model binarization | works for configs/PBOs/signing; `--binarize-models` falls back to the script's own Proton staging |
+| `proton-binarize` | current fork (`master` of https://github.com/bzed/armake2) | everything; `build --proton-binarize` converts `.p3d`/`.rtm` natively on Linux |
 
 ```sh
 git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release   # needs libssl-dev
 install -m755 target/release/armake2 ~/.bin/       # any directory in PATH
-armake2 --help | grep paa2img                      # present = you have the fork
 ```
+
+`dayz-mod-pack.sh` does this check itself: it uses the `armake2` from `PATH` (or `$ARMAKE2`), warns when it is
+upstream, and for `--binarize-models` picks `--proton-binarize` when available.
 
 ## Quick start
 
@@ -93,14 +109,15 @@ binarization for that addon only.
 
 ### `binarize.exe` under Proton: works if Wine's `Z:` drive is tiny
 
-`dayz-mod-pack.sh build --binarize-models` automates the recipe below: it creates a temporary sandbox and Wine
+`dayz-mod-pack.sh build --binarize-models` automates the recipe below (with a current fork it just passes
+`--proton-binarize` to armake2, which does the same internally; the script's own staging is the fallback for older builds): it creates a temporary sandbox and Wine
 prefix (first run takes a while), converts every `.p3d`/`.rtm` in a staging copy of each addon (your sources stay
 MLOD), builds and signs from the staging copy, and deletes the sandbox. It finds DayZ Tools and Proton under the Steam
 root (override with `STEAM_ROOT`, `DAYZ_TOOLS`, `PROTON`) and fails with the binarize log if a model does not convert.
 Tested with the one-triangle model above only.
 
-armake2 only calls BI's `binarize.exe` (DayZ Tools, Steam app 830640) on Windows, so on Linux `.p3d`/`.rtm`
-stay MLOD. Running the exe yourself under Proton works, with one trap. Wine maps `Z:` to `/`, and Binarize
+Upstream armake2 only calls BI's `binarize.exe` (DayZ Tools, Steam app 830640) on Windows, so on Linux `.p3d`/`.rtm`
+stay MLOD; the bzed fork adds `build --proton-binarize` (Linux, opt-in). Running the exe yourself under Proton works, with one trap. Wine maps `Z:` to `/`, and Binarize
 walks directory trees from that root: it burned CPU for minutes without output (a strace showed it listing
 unrelated directories such as `~/.cargo`, plus a CIFS mount), whether the input file existed or not, with or
 without a fake `P:` drive. A `Z:` that contains only what Binarize needs fixes it: 3 s, exit code 0.

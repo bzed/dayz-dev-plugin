@@ -102,7 +102,7 @@ Use the `/dayz-dev` command for direct queries:
 | `config/` | config.cpp, types.xml, server configuration |
 | `compatibility/` | Version 1.30, 1.29 and 1.28 breaking changes and migration guides; `CF.FindFileEx` guidance and fallback `FindFile` path helper |
 | `testing/` | Testing a mod headless on the Steam-installed local DayZ Server (stable and experimental) |
-| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350, or 1042420 experimental with `-e`, and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), `dayz-mod-pack.sh` (armake2: keygen, build and sign PBOs, assemble the Workshop upload folder), installer |
+| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350, or 1042420 experimental with `-e`, and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), `dayz-mod-pack.sh` (armake2 from PATH, ideally the https://github.com/bzed/armake2 fork: keygen, build and sign PBOs, optional model binarization, assemble the Workshop upload folder), installer |
 | `commands/` | `/dayz-dev` slash command template |
 
 ## What's Covered

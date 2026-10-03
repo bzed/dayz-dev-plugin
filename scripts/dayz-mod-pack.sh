@@ -21,10 +21,11 @@
 #                           --binarize-models  convert .p3d/.rtm (MLOD -> ODOL) with BI's binarize.exe
 #                                    from DayZ Tools, run under Proton in a tiny sandboxed Wine Z: drive
 #                                    (Linux only; see systems/mod-packaging.md). Sources stay untouched.
+#                                    Uses armake2's own --proton-binarize when the armake2 in PATH has it.
 #   check                   verify nothing secret is tracked or staged, and the signatures verify
 #   publish-hint            print the `workshop create` / `workshop update` commands
 #
-# Environment: ARMAKE2 (binary, default: armake2 in PATH), KEY_NAME (default: ModName),
+# Environment: ARMAKE2 (binary, default: the armake2 found in PATH), KEY_NAME (default: ModName),
 #              WORKSHOP_APP_ID (default 221100, the DayZ client app),
 #              DAYZ_TOOLS (DayZ Tools dir) and PROTON (Proton dir) for --binarize-models; both auto-detected.
 # Nothing here talks to Steam: uploading stays a deliberate manual step.
@@ -53,10 +54,16 @@ load_conf() {
     CONTENT="$PROJECT/build/@$MOD_NAME"
 }
 
+# Use the armake2 found in PATH first (or $ARMAKE2), then check what it can do:
+#   HAS_FORK    the bzed fork (https://github.com/bzed/armake2): DayZ preprocessor fixes, $PREFIX$, paa2img
+#   HAS_PROTON  the fork's --proton-binarize (binarize.exe under Proton); then --binarize-models uses it
 need_armake2() {
-    command -v "$ARMAKE2" >/dev/null 2>&1 || die "armake2 not found. Build the DayZ fork: https://github.com/bzed/armake2 (cargo build --release), or set ARMAKE2=/path/to/armake2"
-    # The upstream armake2 lacks the DayZ fixes (preprocessor grammar, \$PREFIX\$, PAA); the fork has paa2img.
-    "$ARMAKE2" --help 2>&1 | grep -q paa2img || echo "warning: this armake2 looks like upstream, not the bzed fork; DayZ configs may fail to build" >&2
+    command -v "$ARMAKE2" >/dev/null 2>&1 || die "armake2 not found in PATH. Install the DayZ fork: git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release (then put target/release/armake2 in PATH), or set ARMAKE2=/path/to/armake2"
+    local help; help=$("$ARMAKE2" --help 2>&1 || true)
+    HAS_FORK=0; HAS_PROTON=0
+    case "$help" in *paa2img*) HAS_FORK=1 ;; esac
+    case "$help" in *proton-binarize*) HAS_PROTON=1 ;; esac
+    [ "$HAS_FORK" = 1 ] || echo "warning: $(command -v "$ARMAKE2") looks like upstream armake2, not the bzed fork (https://github.com/bzed/armake2); DayZ configs may fail to build" >&2
 }
 
 # --- --binarize-models: BI's binarize.exe under Proton -----------------------------------------
@@ -199,8 +206,13 @@ cmd_build() {
         srcdir=$dir; wq=()
         if [ "$binmodels" = 1 ]; then
             [ "$mode" = build ] || die "--binarize-models cannot be combined with --no-bin"
-            setup_binarize      # in this shell, not in the $(...) below, so BIN_W and the cleanup trap survive
-            srcdir=$(stage_models "$dir" "$addon"); wq=(-w non-windows-binarization)   # models were converted above
+            if [ "$HAS_PROTON" = 1 ]; then
+                wq=(--proton-binarize)      # armake2 itself runs binarize.exe under Proton
+            else
+                echo "note: $(command -v "$ARMAKE2") has no --proton-binarize (update to the bzed fork); using this script's own Proton staging" >&2
+                setup_binarize      # in this shell, not in the $(...) below, so BIN_W and the cleanup trap survive
+                srcdir=$(stage_models "$dir" "$addon"); wq=(-w non-windows-binarization)   # models were converted above
+            fi
         fi
         say "$mode $addon"
         # Absolute include path so `#include "\MyMod\..."` style includes resolve from the project's src/.
