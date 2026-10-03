@@ -189,18 +189,62 @@ usable in pipes. Debug recipes:
   With `-e`/`$PREFIX$` unset, the folder name becomes the prefix.
 - `$PREFIX$` content: one line `MyMod`, or `key=value` lines (`prefix=MyMod`). Use `MyMod\Sub` for nested prefixes.
 
+## What goes into the upload folder: `mod.cpp`, `meta.cpp`, and the app id
+
+Checked against the 438 items in a local Steam workshop directory (`workshop/content/221100`) and the strings in
+the official DayZ Publisher (`DayZ Tools/Bin/Publisher`):
+
+| File | In real Workshop mods | Contains the app id? | Who creates it |
+|---|---|---|---|
+| `addons/*.pbo` (+ `.bisign`) | yes; the Publisher refuses an upload without an `addons` folder in the root, or with `.pbo` files outside it (`addons` and `Addons` both occur) | no | armake2 (`build`, `sign`) |
+| `keys/*.bikey` | in most mods (some server-side-only items have none) | no | `keygen` |
+| `mod.cpp` | 135 of 438 (optional; the launcher shows its fields) | **no, in none of them** | you; `init` writes a stub |
+| `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it once the item exists |
+
+So the assumption "the app id has to be in `mod.cpp`" does not hold. The id travels outside the mod:
+the Publisher reads it from its own `steam_appid.txt` (`221100`), and the `workshop` uploader takes `--app-id 221100`
+and stores it in `workshop.toml` (which is never uploaded). Do not add an app id to `mod.cpp`.
+
+**`mod.cpp`** fields seen in real mods, in order of frequency: `name`, `overview`, `tooltip`, `action` (URL),
+`author`, `picture`, `logo`, `logoSmall`, `logoOver`, `version`, `authorID` (Steam64 id); rarely `type`,
+`description`, `hidePicture`. `picture`/`logo*` are paths inside a PBO (CF uses
+`"JM/CF/GUI/textures/cf_icon.edds"`), so a logo has to ship in one of your addons. Keep `name`, `author`,
+`version` filled in; everything else can stay empty. 303 of the 438 installed items ship no `mod.cpp` at all, so it is optional; what the launcher shows for
+such an item was not tested. A locally loaded `-mod=` folder works without `meta.cpp` and `mod.cpp`.
+
+**`meta.cpp`** (the Publisher writes it into every upload):
+
+```
+protocol = 1;
+publishedid = 1559212036;      // the Workshop item id
+name = "CF";                   // the item title
+timestamp = 5250757174595880000;
+```
+
+`timestamp` is .NET `DateTime.ToBinary()` of the UTC upload time: `(unix_seconds + 62135596800) * 10^7 + 2^62`
+(decoded CF's value gives 2026-02-19, the build date of its PBO). The `workshop` uploader does not write the file,
+and the item id only exists after the first upload, so `dayz-mod-pack.sh build` writes it whenever `workshop.toml`
+holds an `item_id`:
+
+1. `build`, then `workshop create ...`: the first upload has no `meta.cpp`.
+2. Copy `build/@MyMod/workshop.toml` to the project root and commit it.
+3. `build` again: `meta.cpp` is now written. Then `workshop update ...`. Every later release is just `build` + `update`.
+
+Whether a client or the launcher needs `meta.cpp` (for example to map a folder to its Workshop id) was not
+tested; writing it keeps the upload identical to what the official tool produces.
+
 ## Uploading with `workshop`
 
 Source: https://github.com/nozwock/steam-workshop-uploader (Rust, bundles Steamworks). The Steam client must
 be running and logged in as an account that owns DayZ; the DayZ client app id is **221100**.
 
 ```sh
-# first upload: creates the item and writes workshop.toml into the content folder
+# first upload: creates the item and writes workshop.toml into the content folder (the app id goes here, not into mod.cpp)
 workshop create --app-id 221100 --content build/@MyMod --title "My Mod" \
     --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -m "first upload"
 cp build/@MyMod/workshop.toml workshop.toml && git add workshop.toml     # item id is not secret
 
-# later: rebuild with the script (keeps workshop.toml), then
+# then rebuild (writes meta.cpp from workshop.toml) and publish that; later releases: build + update
 workshop update --content build/@MyMod --ignore-file .workshopignore --glob '!*.biprivatekey' -m "changelog"
 ```
 
@@ -211,7 +255,7 @@ workshop update --content build/@MyMod --ignore-file .workshopignore --glob '!*.
   Workshop page, then flip it public in Steam.
 - Uploading publishes content to Steam and may be cached by clients; it is the user's decision. Run
   `check` and look at the content folder first; do not run `create`/`update` unprompted.
-- Do not ship a `meta.cpp`: it is Workbench/Steam metadata, and the uploader does not need it.
+- `meta.cpp`: see above; the script writes it from `workshop.toml` after the first upload.
 
 ## Pitfalls
 

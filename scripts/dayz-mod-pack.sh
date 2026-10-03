@@ -141,11 +141,20 @@ cmd_init() {
     # Belt and braces for the uploader: pass this with --ignore-file (see publish-hint).
     [ -f "$PROJECT/.workshopignore" ] || printf '*.biprivatekey\nsecrets/\n*.psd\n*.xcf\n*.kra\n*.blend\n*.blend1\n.git*\n' > "$PROJECT/.workshopignore"
     # A private key left in the project root by mistake should never be committed either.
+    # Fields seen in real Workshop mods (CF and others). No app id here: the app id lives in workshop.toml / --app-id.
+    # picture/logo* are paths INSIDE a PBO (prefix-relative, e.g. "MyMod/gui/logo.paa"); leave empty until you ship one.
     [ -f "$PROJECT/mod.cpp" ] || cat > "$PROJECT/mod.cpp" <<EOF
 name = "$name";
+picture = "";
+logo = "";
+logoSmall = "";
+logoOver = "";
+tooltip = "$name";
+overview = "";
+action = "";
 author = "";
+authorID = "";
 version = "1.0";
-type = "mod";
 EOF
     local addon
     for addon in "$PROJECT"/src/*/; do
@@ -171,6 +180,19 @@ cmd_keygen() {
     chmod 600 "$priv"
     say "private key: $priv  (BACK THIS UP outside the repo; losing it means a new key and new .bikey for all servers)"
     say "public key:  $pub  (commit this; server owners copy it into their keys/ folder)"
+}
+
+# meta.cpp is what the official DayZ Publisher adds to the upload (protocol, publishedid, name, timestamp).
+# The `workshop` uploader does not, so we write it once the item exists (item_id in workshop.toml).
+# timestamp = .NET DateTime.ToBinary() of the UTC time: (unix + 62135596800) * 1e7 + 2^62 (checked against CF's meta.cpp).
+write_meta() {
+    local toml="$CONTENT/workshop.toml" id
+    [ -f "$toml" ] || { echo "note: no workshop.toml yet, so no meta.cpp (first upload: run publish-hint, then build again before the first update)" >&2; return 0; }
+    id=$(sed -n 's/^ *item_id *= *\([0-9][0-9]*\).*/\1/p' "$toml" | head -1)
+    [ -n "$id" ] && [ "$id" != 0 ] || { echo "note: workshop.toml has no item_id; no meta.cpp written" >&2; return 0; }
+    printf 'protocol = 1;\npublishedid = %s;\nname = "%s";\ntimestamp = %s;\n' \
+        "$id" "$MOD_NAME" "$(( ($(date -u +%s) + 62135596800) * 10000000 + 4611686018427387904 ))" > "$CONTENT/meta.cpp"
+    say "meta.cpp written for Workshop item $id"
 }
 
 cmd_build() {
@@ -230,6 +252,7 @@ cmd_build() {
     [ -f "$PROJECT/mod.cpp" ] && cp "$PROJECT/mod.cpp" "$CONTENT/mod.cpp"
     [ -f "$PROJECT/workshop.toml" ] && [ ! -f "$CONTENT/workshop.toml" ] && cp "$PROJECT/workshop.toml" "$CONTENT/workshop.toml"
     if [ -d "$PROJECT/static" ]; then cp -a "$PROJECT/static/." "$CONTENT/"; fi
+    write_meta
 
     # The one rule that matters: the private key must not be anywhere under the upload folder.
     if find "$CONTENT" -name '*.biprivatekey' | grep -q .; then
@@ -258,6 +281,16 @@ cmd_check() {
     if find "$CONTENT" -name '*.biprivatekey' 2>/dev/null | grep -q .; then
         echo "FAIL: private key inside the content folder" >&2; bad=1
     fi
+    # Rules the official Publisher enforces (strings in Publisher.exe): addons/ in the root, PBOs only under addons/.
+    if [ -d "$CONTENT" ]; then
+        if [ -d "$CONTENT/addons" ]; then echo "ok: addons/ is in the content root"; else echo "FAIL: no addons/ folder in the content root" >&2; bad=1; fi
+        if find "$CONTENT" -iname '*.pbo' -not -ipath "$CONTENT/addons/*" | grep -q .; then
+            echo "FAIL: .pbo files outside addons/" >&2; bad=1; fi
+        if [ -f "$CONTENT/mod.cpp" ] && grep -q '^ *name *=' "$CONTENT/mod.cpp"; then echo "ok: mod.cpp has a name"
+        else echo "warn: no mod.cpp with a name in the content folder (optional, but the launcher shows it)"; fi
+        if [ -f "$CONTENT/workshop.toml" ] && [ ! -f "$CONTENT/meta.cpp" ]; then
+            echo "warn: workshop.toml exists but no meta.cpp; run build again"; fi
+    fi
     for f in "$CONTENT"/addons/*.pbo; do
         [ -f "$f" ] || { echo "note: nothing built yet (run build)"; break; }
         "$ARMAKE2" verify "$PROJECT/keys/$KEY_NAME.bikey" "$f" "$f.$KEY_NAME.bisign" >/dev/null \
@@ -272,7 +305,11 @@ cmd_publish_hint() {
 Upload needs the Steam client running and logged in as the account that owns DayZ (app $APP_ID).
 It is a deliberate manual step; review the content folder first:  $CONTENT
 
-First upload (creates the item and writes $CONTENT/workshop.toml; copy it to $PROJECT/workshop.toml and commit it):
+The app id ($APP_ID) is NOT part of mod.cpp: it is passed here and stored in workshop.toml.
+
+First upload (creates the item and writes $CONTENT/workshop.toml; copy it to $PROJECT/workshop.toml and commit it).
+This first upload has no meta.cpp yet (the item id does not exist before it), so afterwards run build again (it writes
+meta.cpp from workshop.toml) and publish that with the update command below:
   workshop create --app-id $APP_ID --content "$CONTENT" --title "$MOD_NAME" \\
       --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' --visibility private -m "first upload"
 
