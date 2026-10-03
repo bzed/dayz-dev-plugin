@@ -199,7 +199,7 @@ the official DayZ Publisher (`DayZ Tools/Bin/Publisher`):
 | `addons/*.pbo` (+ `.bisign`) | yes; the Publisher refuses an upload without an `addons` folder in the root, or with `.pbo` files outside it (`addons` and `Addons` both occur) | no | armake2 (`build`, `sign`) |
 | `keys/*.bikey` | in most mods (some server-side-only items have none) | no | `keygen` |
 | `mod.cpp` | 135 of 438 (optional; the launcher shows its fields) | **no, in none of them** | you; `init` writes a stub |
-| `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it once the item exists |
+| `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it (id 0 before the first upload, the real id after) |
 
 So the assumption "the app id has to be in `mod.cpp`" does not hold. The id travels outside the mod:
 the Publisher reads it from its own `steam_appid.txt` (`221100`), and the `workshop` uploader takes `--app-id 221100`
@@ -223,12 +223,13 @@ timestamp = 5250757174595880000;
 
 `timestamp` is .NET `DateTime.ToBinary()` of the UTC upload time: `(unix_seconds + 62135596800) * 10^7 + 2^62`
 (decoded CF's value gives 2026-02-19, the build date of its PBO). The `workshop` uploader does not write the file,
-and the item id only exists after the first upload, so `dayz-mod-pack.sh build` writes it whenever `workshop.toml`
-holds an `item_id`:
+and the item id only exists after the first upload. First uploads commonly carry `publishedid = 0` (0 = unpublished, as in
+`mod-structure.md`), so `dayz-mod-pack.sh build` always writes a `meta.cpp`: id 0 until `workshop.toml` holds an
+`item_id`, the real id afterwards:
 
-1. `build`, then `workshop create ...`: the first upload has no `meta.cpp`.
+1. `build` (writes `publishedid = 0`), then `workshop create ...`.
 2. Copy `build/@MyMod/workshop.toml` to the project root and commit it.
-3. `build` again: `meta.cpp` is now written. Then `workshop update ...`. Every later release is just `build` + `update`.
+3. `build` again: `meta.cpp` now carries the real id. Then `workshop update ...`. Every later release is just `build` + `update`.
 
 Whether a client or the launcher needs `meta.cpp` (for example to map a folder to its Workshop id) was not
 tested; writing it keeps the upload identical to what the official tool produces.

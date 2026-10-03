@@ -183,16 +183,20 @@ cmd_keygen() {
 }
 
 # meta.cpp is what the official DayZ Publisher adds to the upload (protocol, publishedid, name, timestamp).
-# The `workshop` uploader does not, so we write it once the item exists (item_id in workshop.toml).
+# The `workshop` uploader does not, so we write it. Before the item exists (no workshop.toml / item_id) the
+# publishedid is 0, which is what first uploads commonly carry (0 = unpublished); once workshop.toml holds
+# the item_id, every build writes the real id.
 # timestamp = .NET DateTime.ToBinary() of the UTC time: (unix + 62135596800) * 1e7 + 2^62 (checked against CF's meta.cpp).
 write_meta() {
-    local toml="$CONTENT/workshop.toml" id
-    [ -f "$toml" ] || { echo "note: no workshop.toml yet, so no meta.cpp (first upload: run publish-hint, then build again before the first update)" >&2; return 0; }
-    id=$(sed -n 's/^ *item_id *= *\([0-9][0-9]*\).*/\1/p' "$toml" | head -1)
-    [ -n "$id" ] && [ "$id" != 0 ] || { echo "note: workshop.toml has no item_id; no meta.cpp written" >&2; return 0; }
+    local toml="$CONTENT/workshop.toml" id=0
+    if [ -f "$toml" ]; then
+        id=$(sed -n 's/^ *item_id *= *\([0-9][0-9]*\).*/\1/p' "$toml" | head -1)
+        id=${id:-0}
+    fi
     printf 'protocol = 1;\npublishedid = %s;\nname = "%s";\ntimestamp = %s;\n' \
         "$id" "$MOD_NAME" "$(( ($(date -u +%s) + 62135596800) * 10000000 + 4611686018427387904 ))" > "$CONTENT/meta.cpp"
-    say "meta.cpp written for Workshop item $id"
+    if [ "$id" = 0 ]; then say "meta.cpp written with publishedid = 0 (item not created yet)"
+    else say "meta.cpp written for Workshop item $id"; fi
 }
 
 cmd_build() {
@@ -288,8 +292,9 @@ cmd_check() {
             echo "FAIL: .pbo files outside addons/" >&2; bad=1; fi
         if [ -f "$CONTENT/mod.cpp" ] && grep -q '^ *name *=' "$CONTENT/mod.cpp"; then echo "ok: mod.cpp has a name"
         else echo "warn: no mod.cpp with a name in the content folder (optional, but the launcher shows it)"; fi
-        if [ -f "$CONTENT/workshop.toml" ] && [ ! -f "$CONTENT/meta.cpp" ]; then
-            echo "warn: workshop.toml exists but no meta.cpp; run build again"; fi
+        if [ ! -f "$CONTENT/meta.cpp" ]; then echo "warn: no meta.cpp; run build"
+        elif grep -q 'publishedid *= *0;' "$CONTENT/meta.cpp" && [ -f "$CONTENT/workshop.toml" ]; then
+            echo "warn: meta.cpp still has publishedid = 0 but workshop.toml exists; run build again"; fi
     fi
     for f in "$CONTENT"/addons/*.pbo; do
         [ -f "$f" ] || { echo "note: nothing built yet (run build)"; break; }
@@ -308,8 +313,8 @@ It is a deliberate manual step; review the content folder first:  $CONTENT
 The app id ($APP_ID) is NOT part of mod.cpp: it is passed here and stored in workshop.toml.
 
 First upload (creates the item and writes $CONTENT/workshop.toml; copy it to $PROJECT/workshop.toml and commit it).
-This first upload has no meta.cpp yet (the item id does not exist before it), so afterwards run build again (it writes
-meta.cpp from workshop.toml) and publish that with the update command below:
+The first upload carries a meta.cpp with publishedid = 0 (the item id does not exist before it). Afterwards run build
+again: it writes the real id from workshop.toml into meta.cpp; publish that with the update command below:
   workshop create --app-id $APP_ID --content "$CONTENT" --title "$MOD_NAME" \\
       --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' --visibility private -m "first upload"
 
