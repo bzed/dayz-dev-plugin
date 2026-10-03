@@ -66,7 +66,8 @@ need_armake2() {
     HAS_FORK=0; HAS_PROTON=0
     case "$help" in *paa2img*) HAS_FORK=1 ;; esac
     case "$help" in *proton-binarize*) HAS_PROTON=1 ;; esac
-    [ "$HAS_FORK" = 1 ] || echo "warning: $(command -v "$ARMAKE2") looks like upstream armake2, not the bzed fork (https://github.com/bzed/armake2); DayZ configs may fail to build" >&2
+    # Upstream leaves *.c files out of the PBO signature hash, so signed script mods fail the server's check.
+    [ "$HAS_FORK" = 1 ] || die "$(command -v "$ARMAKE2") is upstream armake2. DayZ mods need the bzed fork (upstream ignores *.c files when signing): git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release"
 }
 
 # --- --binarize-models: BI's binarize.exe under Proton -----------------------------------------
@@ -188,10 +189,9 @@ cmd_keygen() {
 }
 
 # meta.cpp is what the official DayZ Publisher adds to the upload (protocol, publishedid, name, timestamp).
-# The `workshop` uploader does not, so we write it. Before the item exists (no workshop.toml / item_id) the
-# publishedid is 0 (0 = unpublished), which is what the Windows tools upload on a first publish. That works for
-# server mods but NOT for client mods, so a client mod must be updated with the real id before it is made public;
-# once workshop.toml holds the item_id, every build writes the real id.
+# The bzed fork of the `workshop` uploader rewrites publishedid and timestamp on every DayZ upload (the upstream
+# uploader does not write it at all). We still write it, so the folder is complete for local tests: publishedid is 0
+# until workshop.toml holds an item_id, which is what the Windows tools upload on a first publish; 0 breaks client mods.
 # timestamp = .NET DateTime.ToBinary() of the UTC time: (unix + 62135596800) * 1e7 + 2^62 (checked against CF's meta.cpp).
 write_meta() {
     local toml="$CONTENT/workshop.toml" id=0
@@ -332,12 +332,18 @@ Upload needs the Steam client running and logged in as the account that owns Day
 It is a deliberate manual step; review the content folder first:  $CONTENT
 
 The app id ($APP_ID) is NOT part of mod.cpp: it is passed here and stored in workshop.toml.
+EOF
+    local wbin; wbin=$(command -v workshop 2>/dev/null || true)
+    if [ -z "$wbin" ]; then echo "WARNING: 'workshop' not found in PATH. Install the bzed fork: https://github.com/bzed/steam-workshop-uploader"
+    elif ! grep -aq 'Updating meta.cpp' "$wbin"; then
+        echo "WARNING: $wbin looks like the upstream uploader. DayZ needs https://github.com/bzed/steam-workshop-uploader: it sets"
+        echo "publishedid and timestamp in meta.cpp on upload; upstream leaves publishedid = 0, which breaks client mods."
+    fi
+    cat <<EOF
 
 First upload (creates the item and writes $CONTENT/workshop.toml; copy it to $PROJECT/workshop.toml and commit it).
-The first upload carries a meta.cpp with publishedid = 0 (the item id does not exist before it), exactly like the Windows
-tools; that is broken for client mods (fine for servermods). So the item is created private: afterwards run build
-again (it writes the real id from workshop.toml into meta.cpp), publish that with the update command below, and
-only then make the item public in Steam:
+The fork fills the new item id into meta.cpp before uploading the content. Create it private and make it public in
+Steam after checking it:
   workshop create --app-id $APP_ID --content "$CONTENT" --title "$MOD_NAME" \\
       --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' --visibility private$tagargs -m "first upload"
 

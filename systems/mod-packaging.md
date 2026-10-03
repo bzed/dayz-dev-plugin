@@ -2,17 +2,22 @@
 
 Turn a source tree into a Workshop-ready folder without DayZ Tools or Windows:
 **armake2** builds and signs the PBOs, **workshop** (steam-workshop-uploader) uploads the folder.
+**Both must be bzed's forks** (see below): the upstream tools produce mods that fail on servers or clients.
 `scripts/dayz-mod-pack.sh` wires the two together; this file explains what it does and what the other
 armake2 commands are for.
 
 Verified on Linux with the bzed armake2 fork (v0.3.0), DayZ Server 1.29.163709: a PBO built, signed and
 verified with this flow loads with `-mod=@Mod` and `verifySignatures = 2`, and its scripts run.
-**Not verified:** a real client connecting with the signature check, and the Steam upload itself.
+The maintainer has since used the armake2 fork and the uploader fork end to end for real uploads ("working well").
+**Not verified here:** the v3-vs-v2 signature check on a real client.
 
-## Use the fork, not upstream armake2
+## The bzed forks are required
 
-Upstream `KoffeinFlummi/armake2` fails on DayZ configs and lacks things DayZ mods need. Use
-**https://github.com/bzed/armake2** (upstream remote kept, rebased on upstream master). Fork changes:
+Tested: upstream `KoffeinFlummi/armake2` **ignores `*.c` files when it creates signatures**, so the `.bisign` of a script
+mod does not cover its scripts and the result is not a correct DayZ signature. It also fails on DayZ configs. You **need**
+**https://github.com/bzed/armake2** (upstream remote kept, rebased on upstream master). The upstream
+`nozwock/steam-workshop-uploader` does not write `meta.cpp`; you likewise need
+**https://github.com/bzed/steam-workshop-uploader** (see "Uploading with `workshop`"). Fork changes in armake2:
 preprocessor grammar fixes (`#include` directives, nested macro arguments), `$PREFIX$` accepted when
 building PBOs, `paa2img` / `img2paa`, opt-in `build --proton-binarize` (models via BI binarize.exe under Proton on Linux), current Rust and dependency versions, a Dockerfile/`build.sh`,
 and an end-to-end DayZ test harness (`testharness/run.sh [--both]`: build, sign, boot a server, check logs).
@@ -27,7 +32,7 @@ armake2 --version
 
 | `armake2 --help` shows | Meaning | What to do |
 |---|---|---|
-| no `paa2img` | upstream armake2; fails on DayZ configs | install the fork |
+| no `paa2img` | upstream armake2; wrong signatures for `*.c`, fails on DayZ configs | do not use; install the fork |
 | `paa2img`, no `proton-binarize` | fork without model binarization | works for configs/PBOs/signing; `--binarize-models` falls back to the script's own Proton staging |
 | `proton-binarize` | current fork (`master` of https://github.com/bzed/armake2) | everything; `build --proton-binarize` converts `.p3d`/`.rtm` natively on Linux |
 
@@ -36,7 +41,7 @@ git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release
 install -m755 target/release/armake2 ~/.bin/       # any directory in PATH
 ```
 
-`dayz-mod-pack.sh` does this check itself: it uses the `armake2` from `PATH` (or `$ARMAKE2`), warns when it is
+`dayz-mod-pack.sh` does this check itself: it uses the `armake2` from `PATH` (or `$ARMAKE2`), refuses to run when it is
 upstream, and for `--binarize-models` picks `--proton-binarize` when available.
 
 ## Quick start
@@ -225,15 +230,16 @@ timestamp = 5250757174595880000;
 (decoded CF's value gives 2026-02-19, the build date of its PBO). The `workshop` uploader does not write the file, and the item id only exists after the first upload. The official
 Windows tools upload `meta.cpp` with `publishedid = 0` on a first publish (`mod-structure.md`: 0 = unpublished).
 That **does not work for DayZ clients** (server mods are fine with it), but it is what those tools do. So
-`dayz-mod-pack.sh build` always writes a `meta.cpp`, id 0 until `workshop.toml` holds an `item_id`, the real id
-afterwards, and a client mod should go through this sequence rather than being published straight away:
+`dayz-mod-pack.sh build` always writes a `meta.cpp` (id 0 until `workshop.toml` holds an `item_id`, the real id
+afterwards) so the folder is complete for local tests.
 
-1. `build` (writes `publishedid = 0`), then `workshop create ... --visibility private`.
-2. Copy `build/@MyMod/workshop.toml` to the project root and commit it.
-3. `build` again: `meta.cpp` now carries the real id. Then `workshop update ...`.
-4. Only then make the item public in Steam. Every later release is just `build` + `update`.
-
-A server-only mod can skip steps 2-3. Whether a client needs anything else from `meta.cpp` was not tested.
+With the **bzed uploader fork** this is all you need: on every DayZ (app 221100) `create` and `update` it creates
+or updates `meta.cpp` in the content folder (`publishedid` from the new item / `workshop.toml`, fresh `timestamp`,
+other fields kept) before it uploads. Tested by the maintainer. Flow: `workshop create ... --visibility private`, copy
+`workshop.toml` to the project root and commit it, check the item, make it public in Steam; later releases are
+`build` + `update`. With the upstream uploader the `publishedid = 0` meta.cpp would be uploaded as is, which breaks client
+mods (server mods are fine); `publish-hint` warns if `workshop` is not the fork. Whether a client needs anything else
+from `meta.cpp` was not tested.
 
 ## Workshop tags
 
@@ -257,7 +263,9 @@ In the script the tags live in `.dayzmod` as `WORKSHOP_TAGS="Mod"` (`init <Name>
 
 ## Uploading with `workshop`
 
-Source: https://github.com/nozwock/steam-workshop-uploader (Rust, bundles Steamworks). The Steam client must
+Source: **https://github.com/bzed/steam-workshop-uploader** (Rust, bundles Steamworks; fork of
+nozwock/steam-workshop-uploader, required for DayZ because it maintains `meta.cpp` on upload; the installed binary
+contains the string `Updating meta.cpp` if it is the fork). Look for `workshop` in `PATH` first. The Steam client must
 be running and logged in as an account that owns DayZ; the DayZ client app id is **221100**.
 
 ```sh
@@ -266,7 +274,7 @@ workshop create --app-id 221100 --content build/@MyMod --title "My Mod" -t Mod \
     --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -m "first upload"
 cp build/@MyMod/workshop.toml workshop.toml && git add workshop.toml     # item id is not secret
 
-# then rebuild (writes meta.cpp from workshop.toml) and publish that; later releases: build + update
+# later releases: build + update (the fork refreshes meta.cpp itself)
 workshop update --content build/@MyMod --ignore-file .workshopignore --glob '!*.biprivatekey' -m "changelog"
 ```
 
@@ -277,7 +285,7 @@ workshop update --content build/@MyMod --ignore-file .workshopignore --glob '!*.
   Workshop page, then flip it public in Steam.
 - Uploading publishes content to Steam and may be cached by clients; it is the user's decision. Run
   `check` and look at the content folder first; do not run `create`/`update` unprompted.
-- `meta.cpp`: see above; the script writes it from `workshop.toml` after the first upload.
+- `meta.cpp`: see above; the uploader fork keeps it current on every upload.
 
 ## Pitfalls
 
