@@ -20,16 +20,15 @@
 #                           build+sign every src/<Addon>/ and assemble build/@<ModName>/
 #                           --no-bin  pack without rapifying config.cpp (armake2 pack)
 #                           --v2      sign with the older v2 signature instead of v3
-#                           --binarize-models  convert .p3d/.rtm (MLOD -> ODOL) with BI's binarize.exe
-#                                    from DayZ Tools, run under Proton in a tiny sandboxed Wine Z: drive
-#                                    (Linux only; see systems/mod-packaging.md). Sources stay untouched.
-#                                    Uses armake2's own --proton-binarize when the armake2 in PATH has it.
+#                           --binarize-models  convert .p3d/.rtm (MLOD -> ODOL) via armake2 --proton-binarize
+#                                    (BI's binarize.exe from DayZ Tools under Proton; Linux only,
+#                                    see systems/mod-packaging.md). Sources stay untouched.
 #   check                   verify nothing secret is tracked or staged, and the signatures verify
 #   publish-hint            print the `workshop create` / `workshop update` commands
 #
 # Environment: ARMAKE2 (binary, default: the armake2 found in PATH), KEY_NAME (default: ModName),
 #              WORKSHOP_APP_ID (default 221100, the DayZ client app),
-#              DAYZ_TOOLS (DayZ Tools dir) and PROTON (Proton dir) for --binarize-models; both auto-detected.
+#              STEAM_ROOT, DAYZ_TOOLS, PROTON: passed through to armake2 for --binarize-models.
 # Nothing here talks to Steam: uploading stays a deliberate manual step.
 set -euo pipefail
 
@@ -57,77 +56,13 @@ load_conf() {
     CONTENT="$PROJECT/build/@$MOD_NAME"
 }
 
-# Use the armake2 found in PATH first (or $ARMAKE2), then check what it can do:
-# The bzed fork (https://github.com/bzed/armake2) is detected by its --proton-binarize option:
+# Use the armake2 found in PATH first (or $ARMAKE2). The bzed fork (https://github.com/bzed/armake2) is detected by its --proton-binarize option:
 #   armake2 -h 2>&1 | grep -- --proton-binarize
 need_armake2() {
     command -v "$ARMAKE2" >/dev/null 2>&1 || die "armake2 not found in PATH. Install the DayZ fork: git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release (then put target/release/armake2 in PATH), or set ARMAKE2=/path/to/armake2"
     local help; help=$("$ARMAKE2" --help 2>&1 || true)
-    HAS_FORK=0; HAS_PROTON=0
-    case "$help" in *--proton-binarize*) HAS_FORK=1; HAS_PROTON=1 ;; esac
     # Upstream leaves *.c files out of the PBO signature hash, so signed script mods fail the server's check.
-    [ "$HAS_FORK" = 1 ] || die "$(command -v "$ARMAKE2") is not the bzed fork (no --proton-binarize in -h). DayZ mods need the fork (upstream signs wrongly): git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release"
-}
-
-# --- --binarize-models: BI's binarize.exe under Proton -----------------------------------------
-# Wine's Z: maps to / and binarize.exe walks directory trees from the drive root, which spins for
-# minutes on a real home directory. So Z: is replaced by a sandbox holding only Binarize and the files.
-find_steam_common() {
-    local r
-    for r in "${STEAM_ROOT:-}" "$HOME/.steam/debian-installation" "$HOME/.steam/steam" "$HOME/.local/share/Steam"; do
-        [ -n "$r" ] && [ -d "$r/steamapps/common" ] && { echo "$r"; return 0; }
-    done
-    return 1
-}
-
-BIN_W=""   # sandbox dir, created on first use
-setup_binarize() {
-    [ -n "$BIN_W" ] && return 0
-    local steam tools proton p
-    steam=$(find_steam_common) || die "no Steam install found (set STEAM_ROOT) for --binarize-models"
-    tools=${DAYZ_TOOLS:-$steam/steamapps/common/DayZ Tools}
-    [ -f "$tools/Bin/Binarize/binarize.exe" ] || die "binarize.exe not found in '$tools' (install DayZ Tools, Steam app 830640, or set DAYZ_TOOLS)"
-    proton=${PROTON:-}
-    if [ -z "$proton" ]; then
-        for p in "Proton Hotfix" "Proton - Experimental" "Proton Experimental" Proton*; do
-            [ -x "$steam/steamapps/common/$p/proton" ] && { proton="$steam/steamapps/common/$p"; break; }
-        done
-    fi
-    [ -x "$proton/proton" ] || die "no Proton found under $steam/steamapps/common (install one in Steam, or set PROTON)"
-    BIN_W=$(mktemp -d "${TMPDIR:-/tmp}/dayz-binarize.XXXXXX")
-    BIN_PROTON="$proton/proton"; BIN_STEAM=$steam
-    BIN_PROTONDIR=$proton
-    # wineserver keeps the prefix busy after the last binarize run; stop it before deleting the sandbox
-    trap 'WINEPREFIX="$BIN_W/prefix/pfx" "$BIN_PROTONDIR/files/bin/wineserver" -k >/dev/null 2>&1; sleep 1; rm -rf "$BIN_W"' EXIT
-    mkdir -p "$BIN_W/prefix" "$BIN_W/stage" "$BIN_W/out"
-    cp -r "$tools/Bin/Binarize" "$BIN_W/Binarize"
-    export STEAM_COMPAT_CLIENT_INSTALL_PATH=$steam STEAM_COMPAT_DATA_PATH=$BIN_W/prefix SteamAppId=830640 SteamGameId=830640 STEAM_COMPAT_APP_ID=830640
-    say "creating a Wine prefix for binarize.exe (first run takes a while)"
-    # the first proton run creates the prefix; run something trivial, then confine Z:
-    timeout 300 "$BIN_PROTON" run cmd.exe /c exit >"$BIN_W/prefix-init.log" 2>&1 || die "Proton prefix creation failed, see $BIN_W/prefix-init.log"
-    [ -d "$BIN_W/prefix/pfx/dosdevices" ] || die "Proton did not create a prefix in $BIN_W/prefix"
-    ln -sfn "$BIN_W" "$BIN_W/prefix/pfx/dosdevices/z:"
-}
-
-# winpath <path under $BIN_W> -> Z:\... (Z: is the sandbox)
-winpath() { local r=${1#"$BIN_W"/}; printf 'Z:\\%s' "${r//\//\\}"; }
-
-# stage_models <addon dir> <addon name>: copy the addon to the sandbox, convert every .p3d/.rtm there.
-stage_models() {
-    setup_binarize
-    local src=$1 name=$2 stage="$BIN_W/stage/$2" f dir base n=0 out
-    rm -rf "$stage"; cp -a "$src" "$stage"
-    while IFS= read -r -d '' f; do
-        dir=$(dirname "$f"); base=$(basename "$f"); n=$((n+1)); out="$BIN_W/out/$n"
-        mkdir -p "$out"
-        ( cd "$BIN_W/Binarize" && timeout 600 "$BIN_PROTON" run ./binarize.exe -norecurse -always -silent -maxProcesses=0 \
-            "$(winpath "$dir")" "$(winpath "$out")" "$base" ) >"$out/log" 2>&1 \
-            || { tail -5 "$out/log" >&2; die "binarize.exe failed for ${f#"$stage"/} (see above)"; }
-        [ -s "$out/$base" ] || die "binarize.exe produced no output for ${f#"$stage"/} (models with textures/materials may need a P: drive; see systems/mod-packaging.md)"
-        cp "$out/$base" "$f"
-    done < <(find "$stage" -type f \( -iname '*.p3d' -o -iname '*.rtm' \) -print0)
-    echo "   binarized $n model/animation file(s) in $name" >&2
-    printf '%s' "$stage"
+    case "$help" in *--proton-binarize*) ;; *) die "$(command -v "$ARMAKE2") is not the bzed fork (no --proton-binarize in -h). DayZ mods need the fork (upstream signs wrongly): git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release" ;; esac
 }
 
 cmd_init() {
@@ -237,13 +172,7 @@ cmd_build() {
         srcdir=$dir; wq=()
         if [ "$binmodels" = 1 ]; then
             [ "$mode" = build ] || die "--binarize-models cannot be combined with --no-bin"
-            if [ "$HAS_PROTON" = 1 ]; then
-                wq=(--proton-binarize)      # armake2 itself runs binarize.exe under Proton
-            else
-                echo "note: $(command -v "$ARMAKE2") has no --proton-binarize (update to the bzed fork); using this script's own Proton staging" >&2
-                setup_binarize      # in this shell, not in the $(...) below, so BIN_W and the cleanup trap survive
-                srcdir=$(stage_models "$dir" "$addon"); wq=(-w non-windows-binarization)   # models were converted above
-            fi
+            wq=(--proton-binarize)      # armake2 runs binarize.exe under Proton
         fi
         say "$mode $addon"
         # Absolute include path so `#include "\MyMod\..."` style includes resolve from the project's src/.

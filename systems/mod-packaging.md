@@ -110,11 +110,10 @@ binarization for that addon only.
 
 ### `binarize.exe` under Proton: works if Wine's `Z:` drive is tiny
 
-`dayz-mod-pack.sh build --binarize-models` automates the recipe below (with a current fork it just passes
-`--proton-binarize` to armake2, which does the same internally; the script's own staging is the fallback for older builds): it creates a temporary sandbox and Wine
-prefix (first run takes a while), converts every `.p3d`/`.rtm` in a staging copy of each addon (your sources stay
-MLOD), builds and signs from the staging copy, and deletes the sandbox. It finds DayZ Tools and Proton under the Steam
-root (override with `STEAM_ROOT`, `DAYZ_TOOLS`, `PROTON`) and fails with the binarize log if a model does not convert.
+`dayz-mod-pack.sh build --binarize-models` passes `--proton-binarize` to armake2, which does the recipe below itself: it creates a
+temporary sandbox and Wine prefix (first run takes a while), converts every `.p3d`/`.rtm` from a staging copy (your sources stay
+MLOD), builds and signs, and deletes the sandbox. It finds DayZ Tools and Proton under the Steam root (override with
+`STEAM_ROOT`, `DAYZ_TOOLS`, `PROTON`) and fails with the binarize log if a model does not convert.
 Tested with the one-triangle model above only.
 
 Upstream armake2 only calls BI's `binarize.exe` (DayZ Tools, Steam app 830640) on Windows, so on Linux `.p3d`/`.rtm`
