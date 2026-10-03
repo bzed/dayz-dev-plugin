@@ -1,5 +1,7 @@
 # DayZ Mod Structure
 
+Building, signing and uploading this layout (armake2, keys, Workshop): see `mod-packaging.md`.
+
 ## Complete Mod Folder Layout
 ```
 @MyMod/

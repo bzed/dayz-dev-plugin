@@ -22,6 +22,12 @@
       "files": [
         "evals/fixtures/SpawnKits/scripts/4_World/SK_Truck.c"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "I have my mod sources in git (src/MyMod with config.cpp and scripts). Set it up so I can build signed PBOs on Linux with armake2 and upload to the Workshop with the `workshop` tool. The private key must never end up in git or in the upload. Show me the folder layout and the commands.",
+      "expected_output": "Uses bzed armake2 fork and dayz-mod-pack.sh; secrets/ git-ignored; keys/ public .bikey; addons/*.pbo + .bisign; notes only config is binarized on Linux; does not run workshop create unprompted",
+      "files": []
     }
   ]
 }

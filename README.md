@@ -97,12 +97,12 @@ Use the `/dayz-dev` command for direct queries:
 | `SKILL.md` | Main orchestrator with decision tree and verification rules |
 | `.gemini/` | Gemini Code Assist context files (GEMINI.md, styleguide.md) |
 | `scripting/` | Enforce Script language, class hierarchy, client-server, memory management |
-| `systems/` | Mod structure, networking, inventory, actions, weapons, vehicles |
+| `systems/` | Mod structure, PBO packaging/signing/Workshop upload (armake2), networking, inventory, actions, weapons, vehicles |
 | `frameworks/` | Framework detection, Community Framework, Expansion |
 | `config/` | config.cpp, types.xml, server configuration |
 | `compatibility/` | Version 1.30, 1.29 and 1.28 breaking changes and migration guides; `CF.FindFileEx` guidance and fallback `FindFile` path helper |
 | `testing/` | Testing a mod headless on the Steam-installed local DayZ Server (stable and experimental) |
-| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350, or 1042420 experimental with `-e`, and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), installer |
+| `scripts/` | `find-dayzserver.sh` (locate Steam app 223350, or 1042420 experimental with `-e`, and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), `dayz-mod-pack.sh` (armake2: keygen, build and sign PBOs, assemble the Workshop upload folder), installer |
 | `commands/` | `/dayz-dev` slash command template |
 
 ## What's Covered
@@ -114,7 +114,7 @@ Use the `/dayz-dev` command for direct queries:
 - Templates, enums, casting, preprocessor
 
 ### DayZ Systems
-- Mod folder structure and PBO packaging
+- Mod folder structure and PBO packaging; armake2 keygen/build/sign and Workshop upload folder
 - RPC systems (vanilla ScriptRPC + CF RPCManager)
 - Net sync variables and CF NetworkedVariables
 - Inventory system (locations, creation, movement)

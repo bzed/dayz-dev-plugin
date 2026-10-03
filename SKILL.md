@@ -1,7 +1,7 @@
 ---
 name: dayz-dev
-description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, keeping one build working on 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer or experimental server, building an isolated server tree, free ports, headless boots, stable and experimental side by side, and reading script logs and RPTs for compile errors or crashes, even when the user only wants to check that a server, mission or serverDZ.cfg starts.
-allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*)
+description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, keeping one build working on 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer or experimental server, building an isolated server tree, free ports, headless boots, stable and experimental side by side, and reading script logs and RPTs for compile errors or crashes, even when the user only wants to check that a server, mission or serverDZ.cfg starts. Also use it for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign keys, binarizing configs, preparing a Steam Workshop upload folder for the workshop uploader).
+allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh:*)
 ---
 
 # DayZ Development
@@ -352,6 +352,16 @@ folders and corrupt each other. For parallel debugging build one tree per server
 the game, Steam query or RCon port at its default**: take random free ones from
 `${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3` for every server.
 A PBO that builds is not a tested mod: boot it and compare the script module counts with vanilla.
+
+### RULE 8b: Packaging, Signing, Workshop Upload
+**Triggers when:**
+- `.pbo`, `.bikey`, `.biprivatekey`, `.bisign`, "sign my mod", "build a PBO", armake2, binarize, `workshop` uploader, Workshop upload/update
+
+**Action:** Read local `systems/mod-packaging.md`. Use the bzed armake2 fork (https://github.com/bzed/armake2,
+upstream fails on DayZ configs) via `${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh` (`init`, `keygen`, `build`, `check`,
+`publish-hint`; `build --binarize-models` also converts models via Proton on Linux). The private key stays in a git-ignored `secrets/`, never in the content folder; never overwrite an
+existing key. Plain `build` rapifies configs only (p3d/rtm stay MLOD unless `--binarize-models`). Uploading to Steam is the user's
+call: print the `workshop` command, do not run it unprompted.
 
 ### RULE 9: Local Knowledge
 **Triggers when:**
