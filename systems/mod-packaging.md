@@ -263,7 +263,7 @@ be running and logged in as an account that owns DayZ; the DayZ client app id is
 ```sh
 # first upload: creates the item and writes workshop.toml into the content folder (the app id goes here, not into mod.cpp)
 workshop create --app-id 221100 --content build/@MyMod --title "My Mod" -t Mod \
-    --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -m "first upload"
+    --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -t Mod -m "first upload"
 cp build/@MyMod/workshop.toml workshop.toml && git add workshop.toml     # item id is not secret
 
 # then rebuild (writes meta.cpp from workshop.toml) and publish that; later releases: build + update
