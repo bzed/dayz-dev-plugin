@@ -1,5 +1,6 @@
 /**
- * FindFile path helper for DayZ 1.29 + 1.30 (server side).
+ * FALLBACK FindFile path helper for DayZ 1.29 + 1.30 (server side), for mods WITHOUT a Community Framework
+ * dependency. If your mod uses CF, call CF.FindFileEx instead (CF-Test now, part of CF from 1.30).
  *
  * Copy into your mod's 3_Game folder and replace YOURMOD with your mod's unique prefix.
  * Wrap every FindFile() pattern with it:
@@ -12,7 +13,9 @@
  * - 1.30 FindFile ignores "$profile:", "$mission:", "$storage:", "$saves:" and silently searches the
  *   server's working directory instead (bug DZEXP-134). It also finds nothing when the path uses
  *   backslashes. Relative and absolute paths with forward slashes work.
- * - "$storage:" never worked with FindFile on a server, not even on 1.29, so it is resolved on both.
+ * - "$storage:" only exists after the mission has started (first OnUpdate/CallLater tick after
+ *   OnMissionStart) and never on an instance's first boot, and FindFile fails on it on 1.30, so it is
+ *   resolved on both versions; this also makes it usable earlier.
  * - OpenFile, FileExist, MakeDirectory, CopyFile, DeleteFile and JsonFileLoader still accept the
  *   placeholders (and either slash) on 1.30. Only FindFile needs this helper.
  *
@@ -20,7 +23,7 @@
  * on 1.30. "$saves:" cannot be resolved at all. "$storage:" with an absolute -storage=<dir> does not
  * work on 1.29, where FindFile rejects absolute paths.
  *
- * Based on lava76's YOURMOD_FindFile_DZEXP134_Helper gist, minus its serverDZ.cfg parsing (which
+ * Derived from lava76's (now obsolete) YOURMOD_FindFile_DZEXP134_Helper gist, minus its serverDZ.cfg parsing (which
  * broke on the stock config's trailing comment) and its Error() calls (VM exceptions on diag builds).
  */
 

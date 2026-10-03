@@ -30,7 +30,8 @@ for any review, port or "does this still work" question. The essentials, all ver
   Put the *old* code under `#ifdef DAYZ_1_29` and the new code in `#else`, so the new path stays the default
   on 1.31+. The same PBO then loads on both. Prefer APIs that exist in both versions over `#ifdef`.
 - **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:` on 1.30** and silently searches the
-  server root instead. Wrap every pattern with `compatibility/YOURMOD_FindFilePath.c`. All other file
+  server root instead. Replace every `FindFile` with `CF.FindFileEx` (CF-Test now, in CF from the 1.30 release; it detects the bug and
+  calls `CF.ResolvePath`); without a CF dependency use the fallback `compatibility/YOURMOD_FindFilePath.c`. All other file
   functions still accept the placeholders.
 - **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
 - **Compile breakers**: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
@@ -130,7 +131,7 @@ if (player)
 | `config/server-config.md` | Server configuration files | Server setup |
 | `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
 | `compatibility/version-130.md` | 1.30 changes, dual 1.29/1.30 targeting, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths, experimental server |
-| `compatibility/YOURMOD_FindFilePath.c` | Tested FindFile path helper for 1.29 + 1.30 | Any code that calls `FindFile` |
+| `compatibility/YOURMOD_FindFilePath.c` | Fallback FindFile path helper for mods without CF (CF mods use `CF.FindFileEx`) | Any code that calls `FindFile` |
 | `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current stable) |
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 
@@ -474,8 +475,8 @@ MyMod/
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
 | Hardcode framework dependencies | Detect at runtime via config.cpp |
 | Skip null checks on Cast<> | Always check before using result |
-| Write files outside `$profile:`/`$saves:`/`$mission:` | Server FileIO is sandboxed to those (`$storage:` does not work for file functions) |
-| `FindFile("$profile:...")` | `FindFile(YOURMOD_FindFilePath("$profile:..."))` - 1.30 ignores placeholders in `FindFile` |
+| Write files outside `$profile:`/`$saves:`/`$mission:` | Server FileIO is sandboxed to those; `$storage:` works only after the first tick following `OnMissionStart` and not on a first boot (no `storage_1`) |
+| `FindFile("$profile:...")` | `CF.FindFileEx("$profile:...", ...)` (or `FindFile(YOURMOD_FindFilePath(...))` without CF) - 1.30 ignores placeholders in `FindFile` |
 | Backslashes in paths (`"$profile:MyMod\\cfg.json"`) | Forward slashes (`"$profile:MyMod/cfg.json"`) - required for `FindFile` on 1.30 |
 | `g_Game.GetMissionFolderPath()` | Folder of `g_Game.GetMissionPath()` - the former is `""` on servers |
 | `override void OnCEUpdate()` | `OnCEIterate(float currentTime, float elapsedTime)` on 1.30 (`#ifdef DAYZ_1_29` for the old one) |

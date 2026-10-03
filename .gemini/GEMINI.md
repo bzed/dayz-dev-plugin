@@ -183,7 +183,7 @@ Check `config.cpp` for dependencies:
 ## 1.30 Changes (experimental; stable Oct 15, 2026) - target 1.29 AND 1.30
 Verified on 1.29.163709 and 1.30.164014 experimental servers. Details: `compatibility/version-130.md`.
 1. **Version define**: engine defines `DAYZ_1_29` or `DAYZ_1_30` (only the current one). Old code under `#ifdef DAYZ_1_29`, new code in `#else`; one PBO loads on both
-2. **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:`** on 1.30 (searches the server root instead) - wrap patterns with `compatibility/YOURMOD_FindFilePath.c`; other file functions still accept placeholders
+2. **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:`** on 1.30 (searches the server root instead) - use `CF.FindFileEx` (CF-Test, in CF from 1.30; fallback without CF: `compatibility/YOURMOD_FindFilePath.c`); other file functions still accept placeholders
 3. **Forward slashes in all paths** - backslashes break `FindFile` on 1.30
 4. **`ProcessVariables()`** → `ProcessVariables(float elapsedTime)`; **`OnCEUpdate()` is never called** → `OnCEIterate(float currentTime, float elapsedTime)`
 5. **Car lights**: `CreateFrontLight/CreateRearLight` no longer called → register `VehicleLightProfile*` via `m_LightsComponent.RegisterLight`; `ToggleHeadlights()` removed → `LightToggle()`

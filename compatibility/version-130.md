@@ -5,7 +5,7 @@
 > **Source of truth:** script diff 1.29.163709 → 1.30.164014 (local `dayz-sources` git, tags `1.29` / `1.30`)
 > plus test mods booted on a 1.29.163709 stable and a 1.30.164014.27 experimental dedicated server
 > (Linux, Oct 2, 2026). Statements marked **(tested)** were observed on both servers; the rest come
-> from reading the 1.30 source. Re-check after each experimental update, since BI may fix DZEXP-134.
+> from reading the 1.30 source. Re-check after each experimental update. BI will not fix DZEXP-134 before the 1.30 release ("sometime after"), so use `CF.FindFileEx`.
 > Remote references (diff.yadz.app, DayZ-Script-Diff) may still show 1.29: use the local source.
 
 Diff 1.29 → 1.30, scripts only: 837 files, +53k/−12k lines. New content (Nasdara map, sandstorms,
@@ -74,25 +74,53 @@ Rules:
 **What changed (tested, server side):** on 1.30, `FindFile()` ignores the `$profile:`, `$mission:`,
 `$storage:` and `$saves:` placeholders. It returns **no error**, but silently lists the server's working
 directory instead (`FindFile("$profile:*")` returned `DayZServer`, `addons`, `keys`, ...).
-Backslash paths find nothing. BI tracks it as **DZEXP-134**; it may or may not be fixed by release.
+Backslash paths find nothing. BI tracks it as **DZEXP-134**. Cause (per the ticket): the script binding of `FindFile` still passes the
+`FindFileFlags` value where the reworked native `FileSystemImpl::FindFirst` expects a file system index.
+BI said the fix comes *after* the 1.30 release, so mods must work around it.
 
 Results of the test matrix (each cell: 1.29 / 1.30):
 
-| Operation | `$profile:` `$mission:` `$saves:` (either slash) | relative `profiles/x/` fwd slash | relative, backslash | absolute fwd slash | `$storage:` |
+| Operation | `$profile:` `$mission:` `$saves:` (either slash) | relative `profiles/x/` fwd slash | relative, backslash | absolute fwd slash | `$storage:` after the mission is running (see below) |
 |---|---|---|---|---|---|
-| `MakeDirectory`, `OpenFile` R/W, `FileExist`, `CopyFile`, `DeleteFile`, `JsonFileLoader` | ✅ / ✅ | ❌ / ✅* | ❌ / ✅* | – | ❌ / ❌ |
-| `FindFile` | ✅ / ❌ **wrong dir** | ✅ / ✅ | ✅ / ❌ | ❌ / ✅ | ❌ / ❌ |
+| `MakeDirectory`, `OpenFile` R/W, `FileExist`, `CopyFile`, `DeleteFile`, `JsonFileLoader` | ✅ / ✅ | ❌ / ✅* | ❌ / ✅* | – | ✅ / ✅ |
+| `FindFile` | ✅ / ❌ **wrong dir** | ✅ / ✅ | ✅ / ❌ | ❌ / ✅ | ✅ / ❌ |
 
 \* writable on the experimental server; that may be a `DEVELOPER`-build relaxation. Don't rely on it.
 
 Consequences:
 - **Keep using `$profile:` / `$mission:` / `$saves:` for every file function except `FindFile`.** It works
-  on both versions. `$storage:` does not work on a server even on 1.29; build that path yourself.
+  on both versions. `$storage:` works too, but only
+  once the mission is running (next bullet).
+- **`$storage:` is not available during mission start (tested, server side).** It becomes usable only after
+  `MissionServer.OnMissionStart()` has returned (and `storage_<instanceId>` existed at boot):
+  `FileExist`, `MakeDirectory`, `OpenFile` all returned false in the `MissionServer` constructor, `OnInit()` and
+  both sides of `OnMissionStart()`, and true from the first `MissionServer.OnUpdate()` / `CallLater` tick
+  (7-10 s later, after the mission init) on both 1.29 and
+  1.30. Don't touch `$storage:` before that: wait for the first `OnUpdate` or a `CallLater`. On the **very
+  first boot of an instance** (no `storage_1` yet) it stayed unavailable for the whole 60 s run on both
+  versions, so fall back to the resolved path (`<mission folder>/storage_<instanceId>/`) when it is false.
+  `FindFile("$storage:...")` works once it is up on 1.29, but not on 1.30 (DZEXP-134 again: `FileExist`
+  true, `FindFile` returns no handle). A relative `-storage=<dir>` made `$storage:` return false on 1.29
+  (the storage was moved there, `FileExist` stayed false), and the 1.30 build kept the default folder and
+  ignored it; don't rely on `-storage` together with `$storage:`.
 - **Use forward slashes in every path you build.** They work everywhere on both versions; backslashes
   break `FindFile` on 1.30. This includes paths assembled from parts (`dir + "/" + name`, not `"\\"`).
-- **Wrap every `FindFile` pattern** with the bundled helper `compatibility/YOURMOD_FindFilePath.c`
+- **Replace every `FindFile` call with `CF.FindFileEx`** (Community Framework). It is a wrapper around
+  `FindFile` that detects whether the bug is present and, if so, resolves the path with `CF.ResolvePath`,
+  so it is a drop-in replacement and correct on 1.29, 1.30 and after BI fixes the engine. It ships in
+  **CF-Test** (Steam Workshop) now and is merged into **CF** for the 1.30 release. Needs a CF dependency
+  (`requiredAddons`/mod list). Reported by lava76 in DZEXP-134. Signature, read from CF-Test (Workshop 1625463737) source:
+  `static FindFileHandle FindFileEx(string pattern, out string fileName, out FileAttr fileAttributes, FindFileFlags flags)`
+  (same as `FindFile`, but `flags` has no default: always pass it).
+  ```c
+  string fileName;
+  FileAttr attr;
+  FindFileHandle h = CF.FindFileEx("$profile:YOURMOD/*.json", fileName, attr, FindFileFlags.ALL);
+  ```
+  Keep the loop, open-by-placeholder and `CloseFindFile` shape below unchanged.
+- **Mods without a CF dependency**: wrap every `FindFile` pattern with the bundled fallback helper `compatibility/YOURMOD_FindFilePath.c`
   (rename `YOURMOD`, drop into `3_Game`). On 1.29 it leaves `$profile:`/`$mission:` alone (only flips
-  slashes); on 1.30 it resolves them; `$storage:` is resolved on both **(tested on both servers)**:
+  slashes); on 1.30 it resolves them; `$storage:` is resolved on both (so it also works during mission start and on a first boot) **(helper tested on both servers)**:
   ```c
   string fileName;
   FileAttr attr;
@@ -108,15 +136,22 @@ Consequences:
       CloseFindFile(h);
   ```
   Enforce Script has no `do { } while`: it fails with `Can't find variable 'do'` (tested), so use this shape.
-- Resolution sources: `$profile:` ← `-profiles=` CLI param (required; a server started without it can't be
+- How `CF.FindFileEx` works (CF-Test source): on non-1.29 builds it writes `$profile:cf_findfile_dz130_test`
+  once, tries `FindFile` on it and, if that fails, resolves every pattern with `CF.ResolvePath`. So a fixed
+  engine needs no workaround, and it needs a writable `$profile:`. `CF.ResolvePath(path)` also flips
+  backslashes and handles `$profile:`, `$saves:` (`<profile>/Users/Server`), `$mission:`, `$storage:`,
+  `$currentdir:`; results are relative to the game dir, so `-profiles=` and the mission must be under it.
+  Mission folder comes from `-mission=`, else `serverDZ.cfg` template via `-config=`, else a guess from the
+  world name (`mpmissions/dayzOffline.<world>` etc.). Unlike our fallback helper it does handle `$saves:`.
+- Resolution sources of the fallback helper: `$profile:` ← `-profiles=` CLI param (required; a server started without it can't be
   resolved), `$mission:` ← folder of `g_Game.GetMissionPath()`, `$storage:` ← `-storage=<dir>` if given,
   else `<mission folder>`, plus `/storage_<instanceId>` (`serverDZ.cfg` `instanceId`, default 1).
 - **`g_Game.GetMissionFolderPath()` returns `""`** on both 1.29 and 1.30 servers (tested): vanilla's
   `SetMissionPath` only splits on `\`, but the engine passes `mpmissions/<mission>/mission.c`.
   Derive the folder from `GetMissionPath()` instead, as the helper does.
-- The community gist `YOURMOD_FindFile_DZEXP134_Helper.c` (lava76) has bugs: a stray `)` (does not compile),
-  `"storage_%1"` instead of `%2`, and its `serverDZ.cfg` `template=` parser keeps the trailing
-  `"; // comment` of the stock config, so it fails with VM exceptions. The bundled helper replaces it.
+- The community gist `YOURMOD_FindFile_DZEXP134_Helper.c` (lava76) is **obsolete**; its author moved the
+  logic into CF (`CF.ResolvePath`, `CF.FindFileEx`). Don't copy it (it also had bugs: a stray `)`,
+  `"storage_%1"` instead of `%2`, a `serverDZ.cfg` parser tripping on the stock trailing comment).
 - Mods that only *read a known file name* (`JsonFileLoader.LoadFile("$profile:MyMod/config.json")`) are
   unaffected. Mods that *enumerate* a directory (load all `*.json`, list saved loadouts, rotate logs)
   break silently: they find nothing, or the server root's files.
@@ -332,9 +367,9 @@ Run this on every mod before Oct 15. Each grep is a quick first pass, not a proo
 servers (`testing/local-server.md`) and read `script_*.log` for `(E)` and `(W)`.
 
 ```
-[ ] grep -rn 'FindFile' → wrap every pattern with YOURMOD_FindFilePath(); open results via placeholder paths
+[ ] grep -rn 'FindFile' → CF.FindFileEx (or the YOURMOD_FindFilePath fallback without CF); open results via placeholder paths
 [ ] grep -rn '\\\\' in path strings → forward slashes everywhere (configs read from JSON too)
-[ ] grep -rn '\$storage:' → build the storage path yourself (never worked on servers)
+[ ] grep -rn '\$storage:' → never before the first OnUpdate/CallLater tick after OnMissionStart; not on a first boot (no storage_1); FindFile on it breaks on 1.30
 [ ] grep -rn 'GetMissionFolderPath' → returns "" on servers; derive from GetMissionPath()
 [ ] grep -rn 'ProcessVariables\|OnCEUpdate\|m_ElapsedSinceLastUpdate\|m_LastUpdatedTime' → #ifdef DAYZ_1_29 / OnCEIterate
 [ ] grep -rn 'CreateFrontLight\|CreateRearLight\|ToggleHeadlights\|m_HeadlightsOn\|IsVital\(Car\|Truck\)Battery' → VehicleLightsComponent / LightToggle

@@ -100,7 +100,7 @@ Use the `/dayz-dev` command for direct queries:
 | `systems/` | Mod structure, networking, inventory, actions, weapons, vehicles |
 | `frameworks/` | Framework detection, Community Framework, Expansion |
 | `config/` | config.cpp, types.xml, server configuration |
-| `compatibility/` | Version 1.30, 1.29 and 1.28 breaking changes and migration guides; tested `FindFile` path helper |
+| `compatibility/` | Version 1.30, 1.29 and 1.28 breaking changes and migration guides; `CF.FindFileEx` guidance and fallback `FindFile` path helper |
 | `testing/` | Testing a mod headless on the Steam-installed local DayZ Server (stable and experimental) |
 | `scripts/` | `find-dayzserver.sh` (locate Steam app 223350, or 1042420 experimental with `-e`, and workshop mods), `make-server-tree.sh` (private server tree symlinked into Steam), `free-ports.sh` (random non-default ports), installer |
 | `commands/` | `/dayz-dev` slash command template |
@@ -135,7 +135,7 @@ Use the `/dayz-dev` command for direct queries:
 
 ### 1.30 Compatibility (experimental, stable Oct 15, 2026)
 - Dual targeting with the engine's `DAYZ_1_29` / `DAYZ_1_30` defines (one PBO for both)
-- `FindFile` ignores `$profile:`/`$mission:` placeholders and backslashes on 1.30: tested helper `compatibility/YOURMOD_FindFilePath.c`
+- `FindFile` ignores `$profile:`/`$mission:` placeholders and backslashes on 1.30: use `CF.FindFileEx` (fallback helper without CF: `compatibility/YOURMOD_FindFilePath.c`)
 - Compile breakers (`ProcessVariables(float)`, `Construction.SetParent`, `ToggleHeadlights`), silent breakers (`OnCEUpdate` never called, car light profiles), obsolete inventory API, ERPCs shift
 - Review checklist; every key claim tested on 1.29.163709 and 1.30.164014 dedicated servers
 

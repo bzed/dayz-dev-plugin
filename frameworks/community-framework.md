@@ -253,6 +253,15 @@ string str = CF_TypeConverters.IntToString(42);
 int val = CF_TypeConverters.StringToInt("42");
 ```
 
+## CF.FindFileEx / CF.ResolvePath (CF-Test, CF for 1.30)
+
+DayZ 1.30's `FindFile` ignores `$profile:`/`$mission:`/`$saves:` (DZEXP-134, fix only after release).
+CF adds `CF.ResolvePath` (prefixed path -> real path) and `CF.FindFileEx`, a drop-in `FindFile` wrapper that
+tests for the bug and resolves the path only when needed. Use it for every `FindFile` call. Available in
+CF-Test on Steam now; merged into CF with the 1.30 stable release. Signature: `CF.FindFileEx(string pattern, out string fileName, out FileAttr attr, FindFileFlags flags)`
+(`flags` has no default).
+See `compatibility/version-130.md` section 2.
+
 ## config.cpp Integration
 
 ```cpp
