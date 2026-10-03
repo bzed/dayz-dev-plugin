@@ -58,16 +58,15 @@ load_conf() {
 }
 
 # Use the armake2 found in PATH first (or $ARMAKE2), then check what it can do:
-#   HAS_FORK    the bzed fork (https://github.com/bzed/armake2): DayZ preprocessor fixes, $PREFIX$, paa2img
-#   HAS_PROTON  the fork's --proton-binarize (binarize.exe under Proton); then --binarize-models uses it
+# The bzed fork (https://github.com/bzed/armake2) is detected by its --proton-binarize option:
+#   armake2 -h 2>&1 | grep -- --proton-binarize
 need_armake2() {
     command -v "$ARMAKE2" >/dev/null 2>&1 || die "armake2 not found in PATH. Install the DayZ fork: git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release (then put target/release/armake2 in PATH), or set ARMAKE2=/path/to/armake2"
     local help; help=$("$ARMAKE2" --help 2>&1 || true)
     HAS_FORK=0; HAS_PROTON=0
-    case "$help" in *paa2img*) HAS_FORK=1 ;; esac
-    case "$help" in *proton-binarize*) HAS_PROTON=1 ;; esac
+    case "$help" in *--proton-binarize*) HAS_FORK=1; HAS_PROTON=1 ;; esac
     # Upstream leaves *.c files out of the PBO signature hash, so signed script mods fail the server's check.
-    [ "$HAS_FORK" = 1 ] || die "$(command -v "$ARMAKE2") is upstream armake2. DayZ mods need the bzed fork (upstream ignores *.c files when signing): git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release"
+    [ "$HAS_FORK" = 1 ] || die "$(command -v "$ARMAKE2") is not the bzed fork (no --proton-binarize in -h). DayZ mods need the fork (upstream signs wrongly): git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release"
 }
 
 # --- --binarize-models: BI's binarize.exe under Proton -----------------------------------------

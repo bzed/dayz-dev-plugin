@@ -25,16 +25,12 @@ and an end-to-end DayZ test harness (`testharness/run.sh [--both]`: build, sign,
 **Look for an installed armake2 first**, then check what it can do; only build the fork if it is missing or too old:
 
 ```sh
-command -v armake2 && armake2 --help | grep -c paa2img          # 1 = bzed fork (DayZ fixes), 0 = upstream
-armake2 --help | grep -q proton-binarize && echo "can binarize models (Proton)"
+command -v armake2 && armake2 -h 2>&1 | grep -- --proton-binarize   # a hit = bzed fork; no hit = upstream, do not use
 armake2 --version
 ```
 
-| `armake2 --help` shows | Meaning | What to do |
-|---|---|---|
-| no `paa2img` | upstream armake2; wrong signatures for `*.c`, fails on DayZ configs | do not use; install the fork |
-| `paa2img`, no `proton-binarize` | fork without model binarization | works for configs/PBOs/signing; `--binarize-models` falls back to the script's own Proton staging |
-| `proton-binarize` | current fork (`master` of https://github.com/bzed/armake2) | everything; `build --proton-binarize` converts `.p3d`/`.rtm` natively on Linux |
+The fork is identified by `--proton-binarize` (upstream signs `*.c` wrongly, fails on DayZ configs). Signatures from the
+fork work fine (maintainer-tested). `build --proton-binarize` also converts `.p3d`/`.rtm` natively on Linux.
 
 ```sh
 git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release   # needs libssl-dev
