@@ -3,10 +3,10 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Our SpawnKits mod (/tmp/claude-1000/-home-bzed-workspace-skills-dayz-dev-plugin/062f59d1-9897-4499-8448-91be72c1cd4c/scratchpad/dayz-dev-workspace/fixtures/SpawnKits) works on 1.29. 1.30 hits stable on Oct 15 and is on experimental now. Please review the whole mod for 1.30 and fix it so the SAME build keeps working on 1.29 stable and on 1.30. Put the fixed mod (same layout) in your outputs dir and add a REVIEW.md listing each problem you found and what you changed.",
+      "prompt": "Our SpawnKits mod (evals/fixtures/SpawnKits) works on 1.29. 1.30 hits stable on Oct 15 and is on experimental now. Please review the whole mod for 1.30 and fix it so the SAME build keeps working on 1.29 stable and on 1.30. Put the fixed mod (same layout) in your outputs dir and add a REVIEW.md listing each problem you found and what you changed.",
       "expected_output": "Fixed mod that compiles on 1.29 and 1.30 plus REVIEW.md",
       "files": [
-        "/tmp/claude-1000/-home-bzed-workspace-skills-dayz-dev-plugin/062f59d1-9897-4499-8448-91be72c1cd4c/scratchpad/dayz-dev-workspace/fixtures/SpawnKits"
+        "evals/fixtures/SpawnKits"
       ]
     },
     {
@@ -17,10 +17,10 @@
     },
     {
       "id": 3,
-      "prompt": "our custom truck in /tmp/claude-1000/-home-bzed-workspace-skills-dayz-dev-plugin/062f59d1-9897-4499-8448-91be72c1cd4c/scratchpad/dayz-dev-workspace/fixtures/SpawnKits/scripts/4_World/SK_Truck.c has no headlight beams on the 1.30 experimental server (and the server log shows script errors), on 1.29 stable everything is fine. why? fix SK_Truck.c so it works on both, write the fixed file + a short ANSWER.md explaining the cause.",
+      "prompt": "our custom truck in evals/fixtures/SpawnKits/scripts/4_World/SK_Truck.c has no headlight beams on the 1.30 experimental server (and the server log shows script errors), on 1.29 stable everything is fine. why? fix SK_Truck.c so it works on both, write the fixed file + a short ANSWER.md explaining the cause.",
       "expected_output": "Explains CreateFrontLight not called / ToggleHeadlights removed; dual-version SK_Truck.c",
       "files": [
-        "/tmp/claude-1000/-home-bzed-workspace-skills-dayz-dev-plugin/062f59d1-9897-4499-8448-91be72c1cd4c/scratchpad/dayz-dev-workspace/fixtures/SpawnKits/scripts/4_World/SK_Truck.c"
+        "evals/fixtures/SpawnKits/scripts/4_World/SK_Truck.c"
       ]
     }
   ]

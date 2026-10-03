@@ -1,8 +1,57 @@
 # Community Framework (CF)
 
-> **Steam Workshop ID:** 1559212036
+> **CF (released):** Steam Workshop **1559212036**, version **1.5.8** (PBO built 2026-02-19), the build for DayZ **1.29** stable
+> **CF-Test (pre-release):** Steam Workshop **1625463737**, `mod.cpp` says 1.5.9 (PBO built 2026-10-03), the build for DayZ **1.30** experimental
 > **GitHub:** https://github.com/Arkensor/DayZ-CommunityFramework
 > **Minimum for 1.28:** CF 1.5.7
+> **Source of truth:** both Workshop PBOs were unpacked and diffed, and CF-Test was booted with a test mod on
+> a 1.29.163709 and a 1.30.164014 experimental server (Oct 3, 2026). Statements marked **(tested)** were observed there.
+
+## Which CF to use (1.29 stable vs 1.30 experimental)
+
+| Target | Mod to subscribe to / ship against | Notes |
+|---|---|---|
+| 1.29 stable only | **CF** (1559212036, 1.5.8) | Nothing else needed |
+| 1.29 and 1.30 (the situation until Oct 15, 2026) | **CF-Test** (1625463737) on the servers you test 1.30 on | One mod build, one CF dependency (`JM_CF_Scripts`) for both |
+| 1.30 stable (from Oct 15, 2026) | **CF** once Jacob/Arkensor merge CF-Test into it | Reported by lava76 in DZEXP-134; not released yet when this was written |
+
+- **CF and CF-Test are drop-in replacements for each other.** Both declare `CfgPatches` class `JM_CF_Scripts` and
+  `CfgMods` class `JM_CommunityFramework`, so your `requiredAddons[] = {"DZ_Data", "JM_CF_Scripts"};` is
+  unchanged, and you must load only **one** of them. (The CF-Test `config.cpp` still says `version = "1.5.8"`
+  while its `mod.cpp` says 1.5.9; don't test for the version string.)
+- **CF-Test loads on both servers (tested).** The same unmodified PBO compiled on 1.29.163709 and on 1.30.164014
+  experimental, with no `SCRIPT (E)` lines from CF itself. 1.30-only code in it is behind `#ifndef DAYZ_1_29`.
+- **What CF-Test changes compared with CF 1.5.8** (unpacked-source diff, 19 files):
+  - **New `CF.ResolvePath` and `CF.FindFileEx`** for DZEXP-134, see [FindFile](#cffindfileex-and-cfresolvepath).
+  - **`MotorbikeScript` gets ModStorage** (`#ifndef DAYZ_1_29`; the motorbike is new in 1.30).
+  - **ModStorage hardening:** `AdvancedCommunication`, `AnimalBase`, `BuildingBase` and `ZombieBase` create their
+    `CF_ModStorageObject` lazily, and `CF_ModStorageObject` rejects a corrupt header (CF version too new or more
+    than 256 mods) with an error instead of reading garbage.
+  - **Input bindings** keep a persistent `UAIDWrapper` (`GetPersistentWrapper()`) instead of an `int` input ID
+    (`CF_InputBinding.m_InputID` is gone; use `m_InputWrapper`).
+  - **`JMAnimRegister`**: the legacy `Register(pType)` is now deprecated and empty; `OnRegisterCustom`/`RegisterCustom`
+    lose their `pBehavior` argument. `ManBase/DayZPlayerCameras.c` was removed.
+  - **Strings:** `CF_String.LastIndexOf` is `[Obsolete]` (use `string.LastIndexOf`); `Replace` and `Base64Stream` log an
+    `Error()` when a `Substring` would exceed 8191 characters; `ConfigReader` now accepts `-` in names.
+- **Experimental servers are diag builds**, so any `Error()` inside CF (for example "Could not determine mission
+  folder") shows up as a `Virtual Machine Exception` there (see `compatibility/version-130.md`).
+
+### Using CF-Test when you target experimental
+
+1. Subscribe to **CF-Test** on the Steam Workshop (a normal Workshop item, `workshop/content/221100/1625463737`).
+   Remove or deactivate **CF** in the same launcher profile/server: two copies of `JM_CF_Scripts` conflict.
+2. On a server, load it like CF: `-mod=@CF-Test` (client-side) with its `.bikey` (`keys/Jacob_Mango_V3.bikey`) in the
+   server's `keys/`. For local tests symlink the item into your own server tree (`testing/local-server.md`).
+3. Start the experimental server with **`-profiles=<dir>`** and **`-mission=mpmissions/<mission folder>`**. CF's
+   path resolution reads both **(tested)**. Without `-mission`, CF falls back to the `Missions DayZ template`
+   from `-config=`, which is only the folder name (`dayzOffline.chernarusplus`, no `mpmissions/`), so `$mission:`
+   and `$storage:` resolve to a folder that doesn't exist: `FindFileEx` returns nothing and the diag build prints
+   a `Virtual Machine Exception`. With `-mission=mpmissions/dayzOffline.chernarusplus` both worked.
+4. CF-Test needs a writable `$profile:` (it creates `cf_findfile_dz130_test` there once) and `-profiles` must
+   be a folder under the game directory (it only keeps the last path component).
+5. When 1.30 stable ships and CF contains the merged code, swap CF-Test back for **CF** (same `requiredAddons`, no
+   code change in your mod). Until then, don't make a mod depend on CF-Test's Workshop ID: depend on
+   `JM_CF_Scripts` and tell users either CF or CF-Test satisfies it.
 
 ## Overview
 
@@ -46,16 +95,20 @@ GetRPCManager().AddRPC(
     "MyModName",                        // Namespace (your mod name)
     "RPC_FunctionName",                 // RPC name (must match handler method)
     this,                               // Handler object
-    SingleplayerExecutionType.Both      // Singleplayer behavior
+    SingleplayerExecutionType.Both      // Singleplayer behavior (default: Server)
 );
 ```
+
+The handler is a method of `this` named exactly like the RPC. `AddRPC` returns `bool`. The enum
+`SingleplayerExecutionType` exists in CF 1.5.8; the old misspelling `SingeplayerExecutionType` is still declared
+too (values `Server = 0`, `Client`, `Both`).
 
 ### SingleplayerExecutionType
 | Value | Behavior |
 |-------|----------|
 | `Both` | Runs on both client and server in SP |
 | `Client` | Client-side only in SP |
-| `Server` | Server-side only in SP |
+| `Server` | Server-side only in SP (default) |
 
 ### Sending
 ```c
@@ -71,11 +124,17 @@ GetRPCManager().SendRPC("MyMod", "RPC_Name",
     true,
     null);                             // null = server
 
-// Broadcast to all clients
-GetRPCManager().VSendRPC("MyMod", "RPC_Name",
+// Broadcast to all clients: identity null from the server
+GetRPCManager().SendRPC("MyMod", "RPC_Name",
     new Param1<string>("broadcast"),
-    true);
+    true,
+    null);
 ```
+
+Signature: `SendRPC(string modName, string funcName, Param params = NULL, bool guaranteed = false, PlayerIdentity sendToIdentity = NULL, Object sendToTarget = NULL)`.
+`SendRPCs(..., array<ref Param> params, ...)` sends several param objects in one go (it does not support
+`SingleplayerExecutionType.Both`). There is no `VSendRPC` in CF 1.5.8.
+
 
 ### Handler Pattern
 ```c
@@ -113,21 +172,32 @@ class MyModule : CF_ModuleWorld
 }
 ```
 
+Get the instance with `CF_Modules<MyModule>.Get()`. Module classes are `CF_ModuleGame` (3_Game, adds
+RPC/input bindings/networked variables), `CF_ModuleWorld` (4_World, adds the client lifecycle events) and
+`CF_ModuleCore`; `CF_Module` is a typedef of `CF_ModuleGame`.
+
 ### Key Events
+**A module only receives the events it enables.** Call the matching `Enable...()` in `OnInit()`
+(`EnableUpdate()`, `EnableMissionStart()`, `EnableMissionFinish()`, `EnableMissionLoaded()`, `EnableSettingsChanged()`,
+`EnableWorldCleanup()`, ... and for `CF_ModuleWorld` `EnableClientNew()`, `EnableClientReady()`,
+`EnableClientDisconnect()`, `EnableInvokeConnect()`, ...). An override without its `Enable` call is never invoked.
 ```c
 class MyModule : CF_ModuleWorld
 {
     override void OnInit()
     {
         super.OnInit();
+        EnableUpdate();
+        EnableMissionStart();
+        EnableClientReady();
         // Module initialization - register RPCs, load config
     }
 
-    override void OnUpdate(CF_EventUpdateArgs args)
+    override void OnUpdate(Class sender, CF_EventArgs args)
     {
-        // Per-frame update
-        float dt = args.DeltaTime;
-        // Use dt for timing
+        // Per-frame update; args is a CF_EventUpdateArgs
+        CF_EventUpdateArgs update = CF_EventUpdateArgs.Cast(args);
+        float dt = update.DeltaTime;
     }
 
     override void OnMissionStart(Class sender, CF_EventArgs args)
@@ -169,97 +239,121 @@ class MyModule : CF_ModuleWorld
 
 ## ModStorage (CF 1.5.5+)
 
-Per-entity persistent key-value storage that survives server restarts.
+Per-entity persistent storage that survives server restarts and is namespaced per mod, so several mods can
+store data on the same entity without breaking each other's `OnStoreLoad` order. Don't override vanilla
+`OnStoreSave`/`OnStoreLoad` for this: CF already does, and writes a header the vanilla version doesn't know.
+Override the CF hooks instead. They exist on `ItemBase`, `AdvancedCommunication`, `AnimalBase`, `BuildingBase`, `ZombieBase`
+(and `MotorbikeScript` in CF-Test / 1.30) and are keyed by your `CfgMods` class name:
 
 ```c
-modded class ItemBase
+modded class KitBase // extends from ItemBase
 {
-    protected int m_CustomValue;
-    protected string m_CustomName;
+    protected int m_MyMod_Value;
 
-    // Save data
-    override void OnStoreSave(ParamsWriteContext ctx)
+    override void CF_OnStoreSave(CF_ModStorageMap storage)
     {
-        super.OnStoreSave(ctx);
-        ctx.Write(m_CustomValue);
-        ctx.Write(m_CustomName);
+        super.CF_OnStoreSave(storage);
+
+        auto ctx = storage["MyModClassName"];  // the class name from your CfgMods
+        if (!ctx) return;
+        ctx.Write(m_MyMod_Value);
     }
 
-    // Load data
-    override bool OnStoreLoad(ParamsReadContext ctx, int version)
+    override bool CF_OnStoreLoad(CF_ModStorageMap storage)
     {
-        if (!super.OnStoreLoad(ctx, version)) return false;
+        if (!super.CF_OnStoreLoad(storage)) return false;
 
-        if (!ctx.Read(m_CustomValue)) return false;
-        if (!ctx.Read(m_CustomName)) return false;
-
+        auto ctx = storage["MyModClassName"];
+        if (!ctx) return true;                 // nothing saved by this mod yet
+        if (!ctx.Read(m_MyMod_Value)) return false;
+        // ctx.GetVersion() returns the mod's `storageVersion` for conditional reads
         return true;
     }
 }
 ```
 
-**Note (CF 1.5.7+):** ModStorage no longer requires a custom class inheriting from `ModStructure` - simplified API.
+- The mod version used by `ctx.GetVersion()` is `storageVersion` in your `CfgMods` class.
+- **Note (CF 1.5.7+):** ModStorage no longer requires a custom class inheriting from `ModStructure`.
+- **CF 1.5.8 vs CF-Test:** CF-Test adds `MotorbikeScript` (1.30) and rejects a corrupt header
+  (`Corrupt modstorage header, unsupported CF version ... or too many mods`) by returning `false` from the load.
+  A storage written by CF-Test (and DayZ 1.30) should be treated as not loadable by 1.29, as for vanilla
+  (`compatibility/version-130.md`, persistence).
 
 ## NetworkedVariables
+
+Modules sync member variables by **name**, like vanilla `RegisterNetSyncVariable*`, but through a `CF_ModuleGame`
+(there is no `CF_NetworkedVariable<T>` wrapper class):
 
 ```c
 class MyModule : CF_ModuleWorld
 {
-    CF_NetworkedVariable<int> m_Score;
-    CF_NetworkedVariable<string> m_Message;
-    CF_NetworkedVariable<bool> m_Active;
+    int m_Score;
+    string m_Message;
 
     override void OnInit()
     {
         super.OnInit();
-        m_Score = new CF_NetworkedVariable<int>(0);
-        m_Message = new CF_NetworkedVariable<string>("");
-        m_Active = new CF_NetworkedVariable<bool>(false);
+        RegisterNetSyncVariable("m_Score");      // only call this in OnInit
+        RegisterNetSyncVariable("m_Message");
     }
 
-    // Set values (automatically synced)
-    void UpdateScore(int score)
+    void SetScore(int score)                      // server
     {
-        m_Score.Set(score);
+        m_Score = score;
+        SetSynchDirty();                          // sends all registered variables to every client
     }
 
-    // Read values
-    int GetScore()
+    override void OnVariablesSynchronized(Class sender, CF_EventArgs args)   // client
     {
-        return m_Score.Get();
+        // m_Score / m_Message are now updated
     }
 }
 ```
 
-**Warning:** CF NetworkedVariables have a nesting depth limit. Don't nest complex data structures too deeply.
+**Limits:** at most 256 registered variables per module; `"a.b.c"` registers a member of a nested class, with a
+maximum nesting depth (`CF_NetworkVariable.MAX_DEPTH`). Only the dedicated server sends; in offline mode
+`OnVariablesSynchronized` is called directly. Sync uses RPC id 435022.
 
 ## NotificationSystem
 
-```c
-// Send notification to player
-NotificationSystem.AddNotification(player, NotificationType.FRIENDLY, "Title", "Message text");
+CF extends vanilla `NotificationSystem` with localised, colourable notifications:
 
-// Notification types
-// NotificationType.FRIENDLY   - Green
-// NotificationType.NEUTRAL    - White
-// NotificationType.HOSTILE    - Red
+```c
+// Server: sendTo = player's identity, or null for everyone. Client: shows it locally.
+NotificationSystem.Create(
+    new StringLocaliser("Title"), new StringLocaliser("Message %1", "text"),
+    "set:dayz_gui image:icon_info", ARGB(255, 0, 255, 0), 5, player.GetIdentity());
 ```
+Signature: `Create(StringLocaliser title, StringLocaliser text, string icon, int color, float time = 3, PlayerIdentity sendTo = NULL)`
+(`CreateNotification` is the same). Vanilla's `AddNotification(NotificationType, ...)` still works for the stock
+types.
 
 ## TypeConverters
 
-```c
-// Convert between types
-string str = CF_TypeConverters.IntToString(42);
-int val = CF_TypeConverters.StringToInt("42");
-```
+`CF_TypeConverter.Get(typename)` returns the registered `CF_TypeConverterBase` for a type (int, float, bool,
+string, vector, Class, Managed, ...). They are used by CF's config/XML/expression code to read and write values from
+text. There are no static `IntToString`/`StringToInt` helpers in CF 1.5.8; use the vanilla `ToString()`/`ToInt()`.
 
-## CF.FindFileEx / CF.ResolvePath (CF-Test, CF for 1.30)
+## CF.FindFileEx and CF.ResolvePath
 
 DayZ 1.30's `FindFile` ignores `$profile:`/`$mission:`/`$saves:` (DZEXP-134, fix only after release).
 CF adds `CF.ResolvePath` (prefixed path -> real path) and `CF.FindFileEx`, a drop-in `FindFile` wrapper that
-tests for the bug and resolves the path only when needed. Use it for every `FindFile` call. Available in
-CF-Test on Steam now; merged into CF with the 1.30 stable release. Signature: `CF.FindFileEx(string pattern, out string fileName, out FileAttr attr, FindFileFlags flags)`
+tests for the bug and resolves the path only when needed. Use it for every `FindFile` call. **Only in CF-Test
+(1.30 experimental) for now; CF 1.5.8 does not have it**, and it is merged into CF for the 1.30 stable release.
+Signature: `CF.FindFileEx(string pattern, out string fileName, out FileAttr attr, FindFileFlags flags)`
 (`flags` has no default).
+
+Tested with CF-Test on both servers (first call after the mission started, `-profiles=profiles -mission=mpmissions/dayzOffline.chernarusplus`):
+
+| Pattern | 1.29 | 1.30 experimental |
+|---|---|---|
+| `$profile:cfp/*.json` (also with `\`) | found | found (resolved) |
+| `$mission:cfg*.json` | found | found only with `-mission=`; otherwise nothing + VM exception |
+| `$storage:d*` | nothing on a first boot (no `storage_1`) | found (`data`) once `storage_1` exists |
+| `$saves:*` | found (`DayZ.cfg`) | nothing (resolved to `<profile>/Users/Server/...`) |
+
+On 1.29 it passes the pattern through unchanged (apart from the slash fix); on 1.30 it tests once and resolves
+only if `FindFile` is broken. `CF.ResolvePath` is public too.
 See `compatibility/version-130.md` section 2.
 
 ## config.cpp Integration
@@ -280,7 +374,13 @@ class CfgPatches
 - Millisecond logging timestamps
 - Non-ASCII character handling fixes
 
-## CF 1.5.8 Changes (1.29 Experimental)
+## CF 1.5.8 (released, DayZ 1.29)
 - `CF_Byte::ToHex` renamed to `CF_ToHex`
 - No longer creating new `CF_EventUpdateArgs` each OnUpdate (performance)
 - `GetGame()` -> `g_Game` optimization recommended
+- Defines exported by `CfgMods` (usable in `#ifdef`): `CF_MODULES`, `CF_MODSTORAGE`, `CF_SURFACES`, `CF_EXPRESSION`,
+  `CF_ONUPDATE_RATE_LIMIT`, `CF_LOG_TIMESTAMP`, ... Use `#ifdef CF_MODULES` to detect CF without a hard dependency.
+
+## CF-Test 1.5.9 (pre-release, DayZ 1.30)
+See [Which CF to use](#which-cf-to-use-129-stable-vs-130-experimental): `CF.FindFileEx`/`CF.ResolvePath`, `MotorbikeScript`
+ModStorage, corrupt-header check, persistent input wrappers.
