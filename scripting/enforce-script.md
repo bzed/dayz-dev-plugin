@@ -265,6 +265,41 @@ if (1 < val)  // This is TRUE, which is wrong!
 
 **WARNING:** `ToLower()` and `ToUpper()` modify the string in-place AND return the length (int), NOT the modified string!
 
+## Logging (`Print`) and the log line limit
+
+`Print()` / `PrintFormat()` write to `script_<date>.log` and the `.RPT`. **The script log cuts every message
+at 255 characters, counting the 16-character prefix `  SCRIPT       : `.** A `Print` therefore keeps at
+most **239 characters**. The rest is dropped silently: no error, no continuation line, no ellipsis. A
+long JSON dump or a joined array looks as if the end never ran.
+
+| Sink | Limit per message | Notes |
+|------|-------------------|-------|
+| `script_*.log` | 255 chars total, 239 of your text with `Print` | The cap is per **message**, not per line: `\n` inside the string does not reset it (150 + `\n` + 88 chars = 239) |
+| `*.RPT` | about 1023 chars total (about 998 of your text) | A cut message loses its line break, so the next RPT line is glued to it |
+| `ErrorEx(msg, ErrorExSeverity.INFO)` | 255 total, but its prefix is longer | The prefix (`  SCRIPT       : [::Func] :: [INFO] :: `) was 43 characters for a function named `LimitTest`, leaving about 212 for the text |
+
+Measured on a dedicated server, 1.29.163709. `Print(string)`, `PrintFormat` and `Print` of a very long
+string (5000 chars) cut identically. A message is not wrapped, so nothing is lost besides the tail.
+
+- Keep log messages under ~200 characters. Put the identifying part (mod tag, id, name) first, because the
+  tail is what gets cut.
+- To log something long, split it. Chunk at 200 so a mod tag and counter still fit:
+
+```c
+static void LogLong(string tag, string msg, int chunk = 200)
+{
+    int len = msg.Length();
+    if (len <= chunk) { Print(tag + msg); return; }
+    int parts = (len + chunk - 1) / chunk;
+    for (int i = 0; i < parts; i++)
+        Print(tag + "(" + (i + 1) + "/" + parts + ") " + msg.Substring(i * chunk, Math.Min(chunk, len - i * chunk)));
+}
+```
+
+- `grep` for the **end** of your message (`E`, a closing brace, an id printed last) to check it was not cut.
+- To test a limit yourself, `Print` strings of known length that end in a marker, boot the server
+  (`testing/local-server.md`) and see where the marker disappears.
+
 ## Preprocessor
 ```c
 #define MY_CONSTANT 42

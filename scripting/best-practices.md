@@ -61,6 +61,7 @@ MyMod/
 | Don't | Do |
 |-------|-----|
 | `GetGame().IsClient()` during init | `!GetGame().IsDedicatedServer()` |
+| `Print(longString)` with 240+ chars | Script log cuts at 255 incl. a 16-char prefix, silently. Keep messages short or chunk them (`scripting/enforce-script.md`, Logging) |
 | `foreach (auto x : GetSomething())` | `auto list = GetSomething(); foreach (auto x : list)` |
 | `if (flags & FLAG == FLAG)` | `if ((flags & FLAG) == FLAG)` |
 | `ref` in function parameters/returns/locals | `ref`/`autoptr` only for class member variables |

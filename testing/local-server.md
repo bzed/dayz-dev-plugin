@@ -261,6 +261,10 @@ grep -h 'SCRIPT.*(E)' "$TREE"/profiles/script_*.log          # compile errors
 grep -h 'MyMod' "$TREE"/profiles/script_*.log                # your own Print() lines
 ```
 
+**Log lines are cut.** `script_*.log` keeps at most 255 characters of a `Print` message including the
+16-character `  SCRIPT       : ` prefix (239 of yours); the `.RPT` keeps about 1023. A missing tail is not a
+bug in your code. Details and a chunking helper: `scripting/enforce-script.md`, Logging.
+
 1. **Did the scripts load at all?** First run the same command without `-servermod` to get the
    vanilla baseline: 416 Game-module files on 1.29.163709, 440 on 1.30.164014 experimental. With the mod, the count must be higher, by the
    number of script files in that module. **An unchanged count means the mod's scripts were not
