@@ -269,13 +269,13 @@ workshop create --app-id 221100 --content build/@MyMod --title "My Mod" -t Mod \
     --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -m "first upload"
 cp build/@MyMod/workshop.toml workshop.toml && git add workshop.toml     # item id is not secret
 
-# later releases: build + update (the fork refreshes meta.cpp itself)
-workshop update --content build/@MyMod --ignore-file .workshopignore --glob '!*.biprivatekey' -m "changelog"
+# later releases: build + update (the fork refreshes meta.cpp itself); always `workshop --no-prompt update`, so it never asks questions or needs a tty
+workshop --no-prompt update --content build/@MyMod --ignore-file .workshopignore --glob '!*.biprivatekey' -m "changelog"
 ```
 
 - `workshop.toml` (`app_id`, `item_id`, `tags`) tells `update` which item to overwrite; it is never uploaded.
 - The uploader makes a filtered staging copy first, honouring `.ignore`/`.gitignore`, `--ignore-file` and
-  `--glob`. Globs are case-sensitive; a leading `!` excludes. `--no-prompt` disables interactive questions.
+  `--glob`. Globs are case-sensitive; a leading `!` excludes. `--no-prompt` (a global option, so it goes before the subcommand) disables interactive questions.
 - Start with `--visibility private` (or `unlisted`), subscribe to the item with another account or check the
   Workshop page, then flip it public in Steam.
 - Uploading publishes content to Steam and may be cached by clients; it is the user's decision. Run

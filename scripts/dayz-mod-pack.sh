@@ -277,7 +277,7 @@ Steam after checking it:
 
 Tags ($WORKSHOP_TAGS) are stored in workshop.toml by create; update reuses them (Steam drops tags that are not sent).
 Updates (item id comes from workshop.toml in the content folder):
-  workshop update --content "$CONTENT" --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' -m "changelog"
+  workshop --no-prompt update --content "$CONTENT" --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' -m "changelog"
 EOF
 }
 
