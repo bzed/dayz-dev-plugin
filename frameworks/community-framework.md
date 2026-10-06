@@ -36,6 +36,22 @@
 - **Experimental servers are diag builds**, so any `Error()` inside CF (for example "Could not determine mission
   folder") shows up as a `Virtual Machine Exception` there (see `compatibility/version-130.md`).
 
+### Requirements for 1.30 experimental servers (CF-Test / COT-Test)
+
+Announced with **DayZ Expansion Experimental 1.9.74** (for DayZ Experimental 1.30), to test your setup under 1.30:
+
+- Use **CF-Test**, and **COT-Test** (Community-Online-Tools-Test, Steam Workshop **1618340505**) if you use COT (Community Online Tools, 1564026768). Not CF/COT: they lack the FindFile workaround.
+- **The server profile folder must be inside the server executable's folder** (a symlink works too). Otherwise the
+  game cannot find it, because of the vanilla 1.30 `FindFile` bug (DZEXP-134): the workaround resolves `$profile:`
+  to a path relative to the server folder and only keeps the last component of `-profiles=`.
+  ```sh
+  ln -s /data/dayz/profile /srv/dayz/server/profile   # real profile elsewhere
+  ./DayZServer -profiles=profile ...                  # never -profiles=/data/dayz/profile
+  ```
+- Until 1.30 stable CF-Test is required; with the 1.30 release (maybe earlier) switch back to CF/COT, no code change.
+- Mods without a CF dependency get the same behavior from `compatibility/YOURMOD_FindFilePath.c`, so with or without CF
+  the profile folder rule is identical.
+
 ### Using CF-Test when you target experimental
 
 1. Subscribe to **CF-Test** on the Steam Workshop (a normal Workshop item, `workshop/content/221100/1625463737`).
@@ -48,7 +64,9 @@
    and `$storage:` resolve to a folder that doesn't exist: `FindFileEx` returns nothing and the diag build prints
    a `Virtual Machine Exception`. With `-mission=mpmissions/dayzOffline.chernarusplus` both worked.
 4. CF-Test needs a writable `$profile:` (it creates `cf_findfile_dz130_test` there once) and `-profiles` must
-   be a folder under the game directory (it only keeps the last path component).
+   be a folder under the game directory (it only keeps the last path component; see the requirement above). It logs
+   "Profile folder X does not exist inside game directory" otherwise. Mission folder order: `GetMissionPath()`, `-mission=`,
+   `-config=` template, world-name guess.
 5. When 1.30 stable ships and CF contains the merged code, swap CF-Test back for **CF** (same `requiredAddons`, no
    code change in your mod). Until then, don't make a mod depend on CF-Test's Workshop ID: depend on
    `JM_CF_Scripts` and tell users either CF or CF-Test satisfies it.

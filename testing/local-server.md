@@ -148,6 +148,10 @@ the read-only symlinks into Steam. Mods can be symlinked into several trees. Do 
 second `-profiles=` at a directory inside the first tree as a shortcut: `mpmissions/` would still
 be shared, and its `storage_1/` is the other lock. Sequential runs may reuse one tree.
 
+On 1.30 keep `-profiles=profiles` (the tree's own folder, or a symlink in the tree to elsewhere): the `FindFile` workaround
+in CF-Test/COT-Test and in `compatibility/YOURMOD_FindFilePath.c` only finds a profile folder inside the server executable's
+folder. An absolute `-profiles=` outside the tree is cut to its last component and `FindFile` finds nothing.
+
 ### Never leave a port at its default
 
 Every server needs its own **game, Steam query and RCon port**, none of them a default. The

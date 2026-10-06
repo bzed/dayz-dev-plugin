@@ -5,6 +5,13 @@
 > **Wiki:** https://github.com/salutesh/DayZ-Expansion-Scripts/wiki
 > **Minimum for 1.28:** Expansion 1.9.28
 
+## DayZ 1.30 (Expansion Experimental 1.9.74)
+
+Expansion Experimental **1.9.74** is built for DayZ Experimental **1.30**. On a 1.30 server use **CF-Test** (and
+**COT-Test** if you use COT) instead of CF/COT, and keep the server profile folder **inside the server executable's folder**
+(a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134). Switch back to CF/COT once 1.30 is released.
+Details: `frameworks/community-framework.md`, `compatibility/version-130.md` section 2.
+
 ## Module System
 
 Expansion is split into independent modules:

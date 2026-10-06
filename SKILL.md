@@ -33,6 +33,9 @@ for any review, port or "does this still work" question. The essentials, all ver
   server root instead. Replace every `FindFile` with `CF.FindFileEx` (CF-Test now, in CF from the 1.30 release; it detects the bug and
   calls `CF.ResolvePath`); without a CF dependency use the fallback `compatibility/YOURMOD_FindFilePath.c`. All other file
   functions still accept the placeholders.
+- **1.30 servers need the profile folder inside the server executable's folder** (symlink ok; `-profiles=profile`, not an
+  absolute path elsewhere) and **CF-Test** (+ **COT-Test** if COT is used) until 1.30 stable; Expansion Experimental 1.9.74 targets this.
+  CF and our fallback helper both resolve `$profile:` relative to the server folder. See `compatibility/version-130.md` section 2.
 - **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
 - **Compile breakers**: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
   `Construction.SetParent(EntityAI)`, `CarScript.ToggleHeadlights()` removed (use `LightToggle()`).

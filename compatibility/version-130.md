@@ -78,6 +78,17 @@ Backslash paths find nothing. BI tracks it as **DZEXP-134**. Cause (per the tick
 `FindFileFlags` value where the reworked native `FileSystemImpl::FindFirst` expects a file system index.
 BI said the fix comes *after* the 1.30 release, so mods must work around it.
 
+> **Requirement for every 1.30 server (announced with DayZ Expansion Experimental 1.9.74): the profile folder
+> (`-profiles=<dir>`) must be inside the server executable's folder; a symlink there also works.** The workaround
+> (`CF.FindFileEx`, and our fallback helper) resolves `$profile:` to a path relative to the server folder, so a
+> profile folder anywhere else is not found by the game: `FindFile` returns nothing, and the vanilla 1.30
+> `FindFile` bug is the reason. An absolute `-profiles=/srv/dz/profile` is reduced to `profile` and looked up in
+> the server folder. Same for `-mission=` / the mission folder and `-storage=`. Fix:
+> `ln -s /srv/dz/profile <server folder>/profile` and start with `-profiles=profile`.
+> Until 1.30 stable, mods that use CF need **CF-Test** (and **COT-Test** instead of COT if you use COT; Expansion
+> Experimental 1.9.74 is built for this). With 1.30 stable (or earlier) switch back to CF/COT. See
+> `frameworks/community-framework.md`.
+
 Results of the test matrix (each cell: 1.29 / 1.30):
 
 | Operation | `$profile:` `$mission:` `$saves:` (either slash) | relative `profiles/x/` fwd slash | relative, backslash | absolute fwd slash | `$storage:` after the mission is running (see below) |
@@ -119,8 +130,8 @@ Consequences:
   ```
   Keep the loop, open-by-placeholder and `CloseFindFile` shape below unchanged.
 - **Mods without a CF dependency**: wrap every `FindFile` pattern with the bundled fallback helper `compatibility/YOURMOD_FindFilePath.c`
-  (rename `YOURMOD`, drop into `3_Game`). On 1.29 it leaves `$profile:`/`$mission:` alone (only flips
-  slashes); on 1.30 it resolves them; `$storage:` is resolved on both (so it also works during mission start and on a first boot) **(helper tested on both servers)**:
+  (rename `YOURMOD`, drop into `3_Game`). It is a port of CF-Test's `FindFileEx`/`ResolvePath`: on 1.29 it only flips slashes; on 1.30 it
+  tests once whether `FindFile` is broken and resolves `$profile:`/`$mission:`/`$storage:`/`$saves:` only if so **(helper tested on a 1.29.163709 and a 1.30.164014 server, same results as CF-Test)**:
   ```c
   string fileName;
   FileAttr attr;
@@ -140,12 +151,21 @@ Consequences:
   once, tries `FindFile` on it and, if that fails, resolves every pattern with `CF.ResolvePath`. So a fixed
   engine needs no workaround, and it needs a writable `$profile:`. `CF.ResolvePath(path)` also flips
   backslashes and handles `$profile:`, `$saves:` (`<profile>/Users/Server`), `$mission:`, `$storage:`,
-  `$currentdir:`; results are relative to the game dir, so `-profiles=` and the mission must be under it.
-  Mission folder comes from `-mission=`, else `serverDZ.cfg` template via `-config=`, else a guess from the
-  world name (`mpmissions/dayzOffline.<world>` etc.). Unlike our fallback helper it does handle `$saves:`.
-- Resolution sources of the fallback helper: `$profile:` ← `-profiles=` CLI param (required; a server started without it can't be
-  resolved), `$mission:` ← folder of `g_Game.GetMissionPath()`, `$storage:` ← `-storage=<dir>` if given,
-  else `<mission folder>`, plus `/storage_<instanceId>` (`serverDZ.cfg` `instanceId`, default 1).
+  `$currentdir:`; results are relative to the game dir, so `-profiles=` and the mission must be under it
+  (absolute `-profiles=`/`-storage=` values are cut down to their last path component; it logs
+  "Profile folder X does not exist inside game directory" when that fails).
+  Mission folder comes from `g_Game.GetMissionPath()`, else `-mission=`, else `serverDZ.cfg` template via
+  `-config=`, else a guess from the world name (`mpmissions/dayzOffline.<world>` etc.). Our fallback helper is a port of it (same one-time bug test, same
+  folder reduction, `$saves:`, mission order, existence warning), so a mod with and without CF behaves the same. Differences on purpose: it
+  uses `Print` instead of `ErrorEx` (a VM exception on diag builds), reads the `template="..."` line of `serverDZ.cfg` itself
+  (vanilla has no `ConfigFile`) and adds the `mpmissions/` prefix CF's version misses.
+- Resolution sources of the fallback helper (same as CF-Test): `$profile:` ← `-profiles=` CLI param (required; a server started
+  without it can't be resolved; absolute values keep only the last component, so the folder must be in the server folder),
+  `$saves:` ← `<profile>/Users/Server`, `$mission:` ← folder of `g_Game.GetMissionPath()`, else `-mission=`, `$storage:` ←
+  `-storage=<dir>` (same reduction) if given, else `<mission folder>`, plus `/storage_<instanceId>` (`serverDZ.cfg` `instanceId`, default 1).
+  Tested: 1.30 with `-profiles=<absolute dir outside the server folder>` logs the "does not exist" warning and `FindFile` finds nothing, as with CF-Test.
+  `$saves:*` finds nothing on 1.30 (`<profile>/Users/Server` is missing there), also like CF-Test.
+  It prints a warning when the resolved folder does not exist.
 - **`g_Game.GetMissionFolderPath()` returns `""`** on both 1.29 and 1.30 servers (tested): vanilla's
   `SetMissionPath` only splits on `\`, but the engine passes `mpmissions/<mission>/mission.c`.
   Derive the folder from `GetMissionPath()` instead, as the helper does.
@@ -367,6 +387,7 @@ Run this on every mod before Oct 15. Each grep is a quick first pass, not a proo
 servers (`testing/local-server.md`) and read `script_*.log` for `(E)` and `(W)`.
 
 ```
+[ ] server start: -profiles=<dir> inside the server executable's folder (symlink ok); CF-Test (+ COT-Test if COT) until 1.30 stable
 [ ] grep -rn 'FindFile' → CF.FindFileEx (or the YOURMOD_FindFilePath fallback without CF); open results via placeholder paths
 [ ] grep -rn '\\\\' in path strings → forward slashes everywhere (configs read from JSON too)
 [ ] grep -rn '\$storage:' → never before the first OnUpdate/CallLater tick after OnMissionStart; not on a first boot (no storage_1); FindFile on it breaks on 1.30
