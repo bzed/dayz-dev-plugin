@@ -1,7 +1,7 @@
 ---
 name: dayz-dev
 description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, one build for 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer or experimental server, isolated server trees, free ports, headless boots, stable and experimental side by side, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's forks of armake2 and steam-workshop-uploader).
-allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh:*)
+allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-headless.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh:*)
 ---
 
 # DayZ Development
@@ -120,6 +120,7 @@ if (player)
 | `config/types-xml.md` | types.xml, economy system | Loot spawning |
 | `config/server-config.md` | Server configuration files | Server setup |
 | `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
+| `testing/client-testing.md` | Run the DayZ client headless (sway), join a local server with mods, RPC-driven client+server tests, read client logs | Client-side behavior: UI, replication, RPCs, client script errors |
 | `compatibility/version-130.md` | 1.30 changes, dual 1.29/1.30 targeting, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths, experimental server |
 | `compatibility/YOURMOD_FindFilePath.c` | Fallback FindFile path helper for mods without CF (CF mods use `CF.FindFileEx`) | Any code that calls `FindFile` |
 | `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current stable) |
@@ -168,6 +169,15 @@ tree made by `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>` with mods 
 paths. **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
 RCon ports at the default**: use `${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3`. A PBO that builds is not a tested mod: boot it and
 compare script module counts with vanilla.
+
+**Client side:** when the change is something only a client shows (UI, what replicates to the player, RPCs, client script errors),
+read `testing/client-testing.md`. `${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh` starts a server and a headless client and returns
+the mod's `[AUTOTEST]` results; the example harness is `testing/autotest-mod/`. It needs the user's running Steam, and the one write it
+makes outside the tree is a symlink to the test mod in the client's `steamapps/common/DayZ` (clients only load `@mod` folders from
+there); remove it afterwards. Never `steam -applaunch` for this: it opens the game on the user's desktop. **One game at a time** (servers:
+as many as needed): run `dayz-client-headless.sh status` first, never kill a game you did not start, and stop yours as soon as you
+have the logs/screenshots. Experimental has no Workshop: the mods come from stable (`-e` flag, `DayZ Exp` dir; see the Experimental
+section of `testing/client-testing.md`).
 
 ### Packaging, signing, Workshop upload
 

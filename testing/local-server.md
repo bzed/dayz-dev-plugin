@@ -307,6 +307,9 @@ A player spawned this way has no `PlayerIdentity`, so code that filters on `GetI
 it. Mark such runs as partial, and say what the headless run did not cover (real client input,
 networking, BattlEye).
 
+For a real client (UI, replication, RPCs in both directions), run the DayZ client headless against
+this server instead: see `testing/client-testing.md`.
+
 ## Windows
 
 - The Steam root is in the registry: `HKCU\Software\Valve\Steam`, value `SteamPath` (by default
