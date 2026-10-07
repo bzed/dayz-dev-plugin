@@ -15,7 +15,8 @@ Vulkan/RADV and sway 1.12.
 - A running **Steam** client, logged in, owning DayZ. The game talks to it. **(tested)**
 - The DayZ client (221100) installed, and a Proton tool. On Linux there is no native client.
 - `sway` and `grim` (`apt install sway grim`). Nothing else: sway runs on a virtual output.
-- A server tree (`local-server.md`, section 2) with the mods and their `.bikey` files linked.
+- A server tree (`local-server.md`, section 2) with the mods and their `.bikey` files linked. If the tree
+  already ran and CF or CF-Test is new to it, wipe its `storage_1` first (`local-server.md`, "Wipe the storage").
 - The mods also linked into the **client's** DayZ directory, see below.
 
 ## Ground rules: one game, many servers, stop early

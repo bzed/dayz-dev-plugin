@@ -166,7 +166,7 @@ DayZ-Script-Diff commits listed in https://diff.yadz.app/assets/versions.json.
 Experimental, 1042420). While 1.30 is experimental, boot every change on **both**, one tree each; if one is missing ask the user to
 install it through Steam (no steamcmd unless asked). **Never copy, edit or write anything in the Steam directories**: run from a
 tree made by `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>` with mods symlinked in and passed as relative `-servermod=`/`-mod=`
-paths. **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
+paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran before CF or CF-Test is added to it** (CF changes how data is stored; stale storage gives CF/Storage errors; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
 RCon ports at the default**: use `${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3`. A PBO that builds is not a tested mod: boot it and
 compare script module counts with vanilla.
 

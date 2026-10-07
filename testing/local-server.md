@@ -221,6 +221,32 @@ If a needed mod is missing, ask the user to subscribe to it in the Steam Worksho
 DayZ launcher once so Steam downloads it. Never `steamcmd +workshop_download_item` into the
 Steam directories.
 
+### Wipe the storage when CF or CF-Test comes into a tree that already ran
+
+**Rule (from bzed's experience): if a server was already run in a tree, or an existing storage directory
+is reused, and CF or CF-Test is installed afterwards, the storage directory must be wiped.** CF digs deep
+into the way DayZ stores things, and the old storage then produces errors from CF/Storage on the next
+boot or when players load.
+
+```sh
+rm -rf "$TREE/mpmissions/"*/storage_1     # persistence: players.db, data/, backup/, spawnpoints.bin
+```
+
+- In a tree built by `make-server-tree.sh`, `storage_1` is a real directory inside the tree, so this never
+  touches the Steam install. Only run it on a path you built yourself.
+- Do it **before** the first boot with CF, not after the errors show up. A fresh storage costs seconds
+  (loot respawns, characters start new); an old one costs a debugging session over errors that are not
+  your mod's.
+- Take it as the default for any test tree whose mod set just gained CF, also when the tree is "only" a
+  copy of an earlier one.
+
+**Not reproduced here.** An attempt to produce the error on DayZ 1.29.163709 did not show it: a tree run
+vanilla (storage 3.3 MB), then with a real player saved by a vanilla client (6.5 MB), then booted with
+the installed CF (Workshop 1559212036) and the same player reconnecting with CF on the client. The server's
+script log and RPT and the client's script log stayed clean. CF-Test and mods that persist their own item,
+vehicle or tent state were not tried, and are the likely trigger. The rule above is therefore reported, not
+verified by us; if you capture the actual error text, add it here.
+
 ## 3. Run it headless
 
 ```sh
