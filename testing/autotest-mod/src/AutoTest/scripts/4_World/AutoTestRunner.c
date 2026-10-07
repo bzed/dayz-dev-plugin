@@ -17,6 +17,8 @@ class AutoTestRunner
 			return;   // one run per server start
 		s_Instance = new AutoTestRunner();
 		s_Instance.m_Player = player;
+		// Godmode from the first moment: the character stands in the world while the client loads.
+		player.SetAllowDamage(false);
 		// The client is still loading when OnConnect fires; give it time to get a player entity.
 		GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(s_Instance.Next, delayMs, false);
 	}
@@ -26,10 +28,12 @@ class AutoTestRunner
 		array<ref AutoTestCase> all = AutoTestRegistry.All();
 		if (m_Index >= all.Count())
 		{
+			m_Player.SetAllowDamage(false);
 			Print("[AUTOTEST] DONE passed=" + m_Passed + " failed=" + m_Failed);
 			return;
 		}
 		AutoTestCase t = all.Get(m_Index);
+		m_Player.SetAllowDamage(t.NeedsDamage());   // godmode unless this test needs damage
 		t.ServerSetup(m_Player);
 
 		ScriptRPC rpc = new ScriptRPC();
@@ -43,6 +47,12 @@ class AutoTestRunner
 		array<ref AutoTestCase> all = AutoTestRegistry.All();
 		if (m_Index >= all.Count() || all.Get(m_Index).Name() != name)
 			return;   // late or duplicate answer
+
+		string serverMsg;
+		if (!all.Get(m_Index).ServerCheck(m_Player, serverMsg))
+			passed = false;
+		if (serverMsg != "")
+			msg = msg + " | server: " + serverMsg;
 		Finish(passed, name, msg);
 	}
 

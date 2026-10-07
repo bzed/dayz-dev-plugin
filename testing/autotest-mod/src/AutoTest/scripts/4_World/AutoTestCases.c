@@ -14,6 +14,61 @@ class AutoTestCase
 		msg = "";
 		return true;
 	}
+
+	// Server half, after the client has answered: assert on what the server sees now.
+	bool ServerCheck(PlayerBase player, out string msg)
+	{
+		msg = "";
+		return true;
+	}
+
+	// The character is in godmode for every test, so a zombie, an animal or a fall cannot kill it in
+	// the middle of a run and fail an unrelated test. Return true only for a test that needs the
+	// character to take damage; the runner re-enables godmode before the next test.
+	bool NeedsDamage() { return false; }
+}
+
+// Godmode really blocks damage: the server hits the player and the health must not drop.
+class AutoTestGodmode : AutoTestCase
+{
+	float m_Before;
+
+	override string Name() { return "godmode_blocks_damage"; }
+
+	override void ServerSetup(PlayerBase player)
+	{
+		m_Before = player.GetHealth("", "");
+		player.ProcessDirectDamage(DT_CLOSE_COMBAT, player, "Torso", "MeleeZombie", "0 0 0", 1.0);
+	}
+
+	override bool ServerCheck(PlayerBase player, out string msg)
+	{
+		float now = player.GetHealth("", "");
+		msg = "health " + m_Before + " -> " + now;
+		return now >= m_Before;
+	}
+}
+
+// The opt-out works: with NeedsDamage() the same hit does reduce the health.
+class AutoTestDamageWhenNeeded : AutoTestCase
+{
+	float m_Before;
+
+	override string Name() { return "damage_when_needed"; }
+	override bool NeedsDamage() { return true; }
+
+	override void ServerSetup(PlayerBase player)
+	{
+		m_Before = player.GetHealth("", "");
+		player.ProcessDirectDamage(DT_CLOSE_COMBAT, player, "Torso", "MeleeZombie", "0 0 0", 1.0);
+	}
+
+	override bool ServerCheck(PlayerBase player, out string msg)
+	{
+		float now = player.GetHealth("", "");
+		msg = "health " + m_Before + " -> " + now;
+		return now < m_Before;
+	}
 }
 
 // Client half only: the local player exists and is the right class.
@@ -80,6 +135,8 @@ class AutoTestRegistry
 			s_Cases = new array<ref AutoTestCase>;
 			s_Cases.Insert(new AutoTestClientHasPlayer());
 			s_Cases.Insert(new AutoTestServerItemSynced());
+			s_Cases.Insert(new AutoTestGodmode());
+			s_Cases.Insert(new AutoTestDamageWhenNeeded());   // last: it leaves the character hurt
 		}
 		return s_Cases;
 	}

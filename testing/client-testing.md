@@ -139,10 +139,11 @@ approach below (RPC-driven tests) is implemented in `testing/autotest-mod/` and 
 ```
  server (drives)                              client (executes)
  -----------------                            -----------------
- wait until the player is connected
+ wait until the player is connected, godmode on
  test N: ServerSetup(player)   (create item, set state, call the code under test)
  RPC AUTOTEST_RPC_RUN(name) ----------------> ClientCheck()  (retry up to 5 s while it returns false)
                               <--------------  RPC AUTOTEST_RPC_RESULT(name, passed, message)
+ ServerCheck(player)           (assert on what the server sees now)
  Print("[AUTOTEST] PASS|FAIL name message")
  test N+1 ...
  Print("[AUTOTEST] DONE passed=P failed=F")   <- the line an outside script waits for
@@ -165,7 +166,7 @@ Why it is built this way:
 ### Adding a test
 
 Everything is in `testing/autotest-mod/src/AutoTest/scripts/4_World/AutoTestCases.c`. A test is a class
-(the two real ones in that file ran; this `FNX45` one is an illustrative sketch, not run):
+(the four real ones in that file ran; this `FNX45` one is an illustrative sketch, not run):
 
 ```c
 class MyModTestPistolReloads : AutoTestCase
@@ -200,6 +201,26 @@ leave it out of the release build. Then production players never get the harness
 The mod name also becomes a script define (`#ifdef AutoTest` is true when the mod is loaded, visible in the
 `Module: ...; defines:` log line), so shared code can switch on it. **(tested)**
 
+### Keep the character alive: godmode
+
+A zombie, an animal or a fall that kills the test character in the middle of a run fails whatever test
+happens to be running, for a reason that has nothing to do with the mod. So the runner puts the character
+in godmode (`player.SetAllowDamage(false)`, server side) as soon as it is scheduled, and again between tests.
+**(tested)**
+
+- **Godmode is the default.** In the run, a server-side melee hit left the health at `100 -> 100`
+  (`godmode_blocks_damage`). **(tested, 1.29.163709 and 1.30.164014.27)**
+- **Opt out per test** when the test is about damage (zombie/animal/fall behavior, a damage-handling hook,
+  healing): override `bool NeedsDamage() { return true; }`. The runner turns damage on for that test only and
+  turns godmode back on before the next one. The same hit then reduced the health, `100 -> 95`
+  (`damage_when_needed`). **(tested, 1.29.163709 and 1.30.164014.27)** Put such tests last or make them restore the health:
+  they leave the character hurt.
+- **What it covers:** the hit the harness sends itself (`ProcessDirectDamage` with the `MeleeZombie` ammo).
+  Real zombies, animals, falls, and hunger, thirst or cold were not tried; check a test that depends on them
+  before trusting godmode there.
+- `ServerCheck(player, out msg)` exists for exactly this kind of assertion: it runs on the server after the
+  client answered, and a failure there fails the test with `| server: <msg>` appended.
+
 ### Pitfalls found while building it
 
 - **Do not `foreach` directly over a function's return value**, such as `foreach (T t : Registry.All())`.
@@ -221,7 +242,9 @@ The mod name also becomes a script define (`#ifdef AutoTest` is true when the mo
 "${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh" -t "$TREE" -s "@AutoTest" -c "@AutoTest" -o /tmp/run1
 # [AUTOTEST] PASS client_has_player local player SurvivorM_Rolf
 # [AUTOTEST] PASS server_item_synced Chemlight_Red replicated to the client
-# [AUTOTEST] DONE passed=2 failed=0
+# [AUTOTEST] PASS godmode_blocks_damage  | server: health 100 -> 100
+# [AUTOTEST] PASS damage_when_needed  | server: health 100 -> 95
+# [AUTOTEST] DONE passed=4 failed=0
 # artifacts: /tmp/run1 (server.log, final.png; server script log: ...)
 ```
 
