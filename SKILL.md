@@ -1,6 +1,6 @@
 ---
 name: dayz-dev
-description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, one build for 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer or experimental server, isolated server trees, free ports, headless boots, stable and experimental side by side, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's forks of armake2 and steam-workshop-uploader).
+description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, one build for 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer or experimental server, isolated server trees, free ports, headless boots, stable and experimental side by side, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's armake2 fork and nozwock's steam-workshop-uploader).
 allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-headless.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh:*)
 ---
 
@@ -127,7 +127,7 @@ if (player)
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 | `scripting/api-lookup.md` | Where to verify classes/tokens, curl/jq/WebFetch recipes for diff.yadz.app, BI wiki, CF, Expansion | Any class/method/token you are not sure about |
 | `scripting/best-practices.md` | Enforce Script/memory/null-safety rules, mod folder tree, anti-patterns, modded class/RPC/net-sync snippets | Writing or reviewing code |
-| `systems/mod-packaging.md` | armake2 build/sign/binarize, keys, Workshop upload folder, tags, `workshop` uploader (bzed forks required) | Building, signing or publishing a mod |
+| `systems/mod-packaging.md` | armake2 build/sign/binarize, keys, Workshop upload folder, tags, `workshop` uploader (bzed armake2 fork required) | Building, signing or publishing a mod |
 
 ---
 
@@ -185,9 +185,9 @@ section of `testing/client-testing.md`).
 
 **Action:** read `systems/mod-packaging.md`, then drive it with `${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh` (`init`, `keygen`, `build`, `check`, `publish-hint`).
 
-- **bzed's forks are required, upstream will not do.** armake2 must be https://github.com/bzed/armake2 (upstream leaves `*.c` scripts out of
-  the signature hash, so signed script mods fail on servers) and the uploader must be https://github.com/bzed/steam-workshop-uploader
-  (it writes/updates `meta.cpp` on DayZ uploads). Look in `$PATH` first and check `armake2 -h 2>&1 | grep -- --proton-binarize`: a hit = the fork (it also binarizes models on Linux). If a tool is missing or is upstream, tell the user and have them install the fork.
+- **bzed's armake2 fork is required, upstream armake2 will not do.** armake2 must be https://github.com/bzed/armake2 (upstream leaves `*.c` scripts out of
+  the signature hash, so signed script mods fail on servers). Look in `$PATH` first and check `armake2 -h 2>&1 | grep -- --proton-binarize`: a hit = the fork (it also binarizes models on Linux). If it is missing or is upstream, tell the user and have them install the fork.
+  The uploader is the upstream https://github.com/nozwock/steam-workshop-uploader (it supports DayZ and maintains `meta.cpp`); no fork needed.
 - The private key lives in a git-ignored `secrets/`, never in the content folder; never overwrite an existing key.
 - Workshop tags: exactly one type tag, `Mod` or `Server` (`Server` = servermods only, never both), plus any number of content tags (Animation, Character, Economy, Environment, Equipment, Mechanics, Sound, Props, Terrain, Vehicle, Weapon). `mod.cpp` is optional; a mod works without it. Plain `build` rapifies configs only; models need `--binarize-models`.
 - Uploading to Steam is the user's call: print the `workshop` command with `publish-hint`, never run it unprompted.

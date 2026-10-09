@@ -108,8 +108,8 @@ cmd_keygen() {
 }
 
 # meta.cpp is what the official DayZ Publisher adds to the upload (protocol, publishedid, name, timestamp).
-# The bzed fork of the `workshop` uploader rewrites publishedid and timestamp on every DayZ upload (the upstream
-# uploader does not write it at all). We still write it, so the folder is complete for local tests: publishedid is 0
+# The `workshop` uploader (nozwock/steam-workshop-uploader) rewrites publishedid and timestamp on every DayZ upload.
+# We still write it, so the folder is complete for local tests: publishedid is 0
 # until workshop.toml holds an item_id, which is what the Windows tools upload on a first publish; 0 breaks client mods.
 # timestamp = .NET DateTime.ToBinary() of the UTC time: (unix + 62135596800) * 1e7 + 2^62 (checked against CF's meta.cpp).
 write_meta() {
@@ -248,15 +248,12 @@ It is a deliberate manual step; review the content folder first:  $CONTENT
 The app id ($APP_ID) is NOT part of mod.cpp: it is passed here and stored in workshop.toml.
 EOF
     local wbin; wbin=$(command -v workshop 2>/dev/null || true)
-    if [ -z "$wbin" ]; then echo "WARNING: 'workshop' not found in PATH. Install the bzed fork: https://github.com/bzed/steam-workshop-uploader"
-    elif ! grep -aq 'Updating meta.cpp' "$wbin"; then
-        echo "WARNING: $wbin looks like the upstream uploader. DayZ needs https://github.com/bzed/steam-workshop-uploader: it sets"
-        echo "publishedid and timestamp in meta.cpp on upload; upstream leaves publishedid = 0, which breaks client mods."
+    if [ -z "$wbin" ]; then echo "WARNING: 'workshop' not found in PATH. Install it: https://github.com/nozwock/steam-workshop-uploader"
     fi
     cat <<EOF
 
 First upload (creates the item and writes $CONTENT/workshop.toml; copy it to $PROJECT/workshop.toml and commit it).
-The fork fills the new item id into meta.cpp before uploading the content. Create it private and make it public in
+The uploader fills the new item id into meta.cpp before uploading the content. Create it private and make it public in
 Steam after checking it:
   workshop create --app-id $APP_ID --content "$CONTENT" --title "$MOD_NAME" \\
       --ignore-file "$PROJECT/.workshopignore" --glob '!*.biprivatekey' --visibility private$tagargs -m "first upload"

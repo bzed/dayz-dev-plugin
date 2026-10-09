@@ -2,22 +2,21 @@
 
 Turn a source tree into a Workshop-ready folder without DayZ Tools or Windows:
 **armake2** builds and signs the PBOs, **workshop** (steam-workshop-uploader) uploads the folder.
-**Both must be bzed's forks** (see below): the upstream tools produce mods that fail on servers or clients.
+**armake2 must be bzed's fork** (see below): upstream armake2 produces mods that fail on servers. The uploader is the upstream https://github.com/nozwock/steam-workshop-uploader, which supports DayZ.
 `scripts/dayz-mod-pack.sh` wires the two together; this file explains what it does and what the other
 armake2 commands are for.
 
 Verified on Linux with the bzed armake2 fork (v0.3.0), DayZ Server 1.29.163709: a PBO built, signed and
 verified with this flow loads with `-mod=@Mod` and `verifySignatures = 2`, and its scripts run.
-The maintainer has since used the armake2 fork and the uploader fork end to end for real uploads ("working well").
+The maintainer has since used the armake2 fork and the uploader end to end for real uploads ("working well").
 **Not verified here:** the v3-vs-v2 signature check on a real client.
 
-## The bzed forks are required
+## The bzed armake2 fork is required
 
 Tested: upstream `KoffeinFlummi/armake2` **ignores `*.c` files when it creates signatures**, so the `.bisign` of a script
 mod does not cover its scripts and the result is not a correct DayZ signature. It also fails on DayZ configs. You **need**
-**https://github.com/bzed/armake2** (upstream remote kept, rebased on upstream master). The upstream
-`nozwock/steam-workshop-uploader` does not write `meta.cpp`; you likewise need
-**https://github.com/bzed/steam-workshop-uploader** (see "Uploading with `workshop`"). Fork changes in armake2:
+**https://github.com/bzed/armake2** (upstream remote kept, rebased on upstream master). The uploader needs no fork
+(see "Uploading with `workshop`"). Fork changes in armake2:
 preprocessor grammar fixes (`#include` directives, nested macro arguments), `$PREFIX$` accepted when
 building PBOs, `paa2img` / `img2paa`, opt-in `build --proton-binarize` (models via BI binarize.exe under Proton on Linux), current Rust and dependency versions, a Dockerfile/`build.sh`,
 and an end-to-end DayZ test harness (`testharness/run.sh [--both]`: build, sign, boot a server, check logs).
@@ -222,18 +221,18 @@ timestamp = 5250757174595880000;
 ```
 
 `timestamp` is .NET `DateTime.ToBinary()` of the UTC upload time: `(unix_seconds + 62135596800) * 10^7 + 2^62`
-(decoded CF's value gives 2026-02-19, the build date of its PBO). The `workshop` uploader does not write the file, and the item id only exists after the first upload. The official
+(decoded CF's value gives 2026-02-19, the build date of its PBO). The item id only exists after the first upload. The official
 Windows tools upload `meta.cpp` with `publishedid = 0` on a first publish (`mod-structure.md`: 0 = unpublished).
 That **does not work for DayZ clients** (server mods are fine with it), but it is what those tools do. So
 `dayz-mod-pack.sh build` always writes a `meta.cpp` (id 0 until `workshop.toml` holds an `item_id`, the real id
 afterwards) so the folder is complete for local tests.
 
-With the **bzed uploader fork** this is all you need: on every DayZ (app 221100) `create` and `update` it creates
+With the **upstream uploader** this is all you need: on every DayZ (app 221100) `create` and `update` it creates
 or updates `meta.cpp` in the content folder (`publishedid` from the new item / `workshop.toml`, fresh `timestamp`,
 other fields kept) before it uploads. Tested by the maintainer. Flow: `workshop create ... --visibility private`, copy
 `workshop.toml` to the project root and commit it, check the item, make it public in Steam; later releases are
-`build` + `update`. With the upstream uploader the `publishedid = 0` meta.cpp would be uploaded as is, which breaks client
-mods (server mods are fine); `publish-hint` warns if `workshop` is not the fork. Whether a client needs anything else
+`build` + `update`. An uploader that does not touch it would upload the `publishedid = 0` meta.cpp as is, which breaks client
+mods (server mods are fine). Whether a client needs anything else
 from `meta.cpp` was not tested.
 
 ## Workshop tags
@@ -270,9 +269,8 @@ In the script the tags live in `.dayzmod` as `WORKSHOP_TAGS="Mod Weapon"` (`init
 
 ## Uploading with `workshop`
 
-Source: **https://github.com/bzed/steam-workshop-uploader** (Rust, bundles Steamworks; fork of
-nozwock/steam-workshop-uploader, required for DayZ because it maintains `meta.cpp` on upload; the installed binary
-contains the string `Updating meta.cpp` if it is the fork). Look for `workshop` in `PATH` first. The Steam client must
+Source: **https://github.com/nozwock/steam-workshop-uploader** (Rust, bundles Steamworks; supports DayZ and
+maintains `meta.cpp` on upload; the former bzed fork is no longer needed). Look for `workshop` in `PATH` first. The Steam client must
 be running and logged in as an account that owns DayZ; the DayZ client app id is **221100**.
 
 ```sh
@@ -281,7 +279,7 @@ workshop create --app-id 221100 --content build/@MyMod --title "My Mod" -t Mod \
     --ignore-file .workshopignore --glob '!*.biprivatekey' --visibility private -m "first upload"
 cp build/@MyMod/workshop.toml workshop.toml && git add workshop.toml     # item id is not secret
 
-# later releases: build + update (the fork refreshes meta.cpp itself); always `workshop --no-prompt update`, so it never asks questions or needs a tty
+# later releases: build + update (the uploader refreshes meta.cpp itself); always `workshop --no-prompt update`, so it never asks questions or needs a tty
 workshop --no-prompt update --content build/@MyMod --ignore-file .workshopignore --glob '!*.biprivatekey' -m "changelog"
 ```
 
@@ -292,7 +290,7 @@ workshop --no-prompt update --content build/@MyMod --ignore-file .workshopignore
   Workshop page, then flip it public in Steam.
 - Uploading publishes content to Steam and may be cached by clients; it is the user's decision. Run
   `check` and look at the content folder first; do not run `create`/`update` unprompted.
-- `meta.cpp`: see above; the uploader fork keeps it current on every upload.
+- `meta.cpp`: see above; the uploader keeps it current on every upload.
 
 ## Pitfalls
 

@@ -26,7 +26,7 @@
     {
       "id": 4,
       "prompt": "I have my mod sources in git (src/MyMod with config.cpp and scripts). Set it up so I can build signed PBOs on Linux with armake2 and upload to the Workshop with the `workshop` tool. The private key must never end up in git or in the upload. Show me the folder layout and the commands.",
-      "expected_output": "Requires bzed's armake2 fork (upstream ignores *.c in signatures) and bzed's steam-workshop-uploader fork (writes meta.cpp), checks PATH first; uses dayz-mod-pack.sh; secrets/ git-ignored; keys/ public .bikey; addons/*.pbo + .bisign; notes only config is binarized on Linux unless --binarize-models; does not run workshop create unprompted",
+      "expected_output": "Requires bzed's armake2 fork (upstream ignores *.c in signatures) and the upstream nozwock steam-workshop-uploader (no fork needed), checks PATH first; uses dayz-mod-pack.sh; secrets/ git-ignored; keys/ public .bikey; addons/*.pbo + .bisign; notes only config is binarized on Linux unless --binarize-models; does not run workshop create unprompted",
       "files": []
     }
   ]
