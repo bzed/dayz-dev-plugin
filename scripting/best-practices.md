@@ -40,7 +40,7 @@ idioms (modded class, RPC, net sync variables). For the language itself see `enf
 ## Mod Structure
 ```
 MyMod/
-├── mod.cpp                    # Mod metadata
+├── mod.cpp                    # Optional launcher metadata
 ├── meta.cpp                   # Workshop metadata (auto-generated)
 ├── Keys/                      # BIS key for server signing
 ├── Addons/

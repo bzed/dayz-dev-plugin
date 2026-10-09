@@ -44,10 +44,10 @@ upstream, and for `--binarize-models` picks `--proton-binarize` when available.
 
 ```sh
 S=${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh
-$S init MyMod        # folders, .gitignore, .workshopignore, mod.cpp stub
+$S init MyMod        # folders, .gitignore, .workshopignore
 # put sources in src/<Addon>/ (config.cpp, $PREFIX$, scripts/, data/ ...), one folder per PBO
 $S keygen            # secrets/MyMod.biprivatekey (never committed) + keys/MyMod.bikey (public)
-$S build             # build/@MyMod/{addons,keys,mod.cpp} - this folder is what you upload
+$S build             # build/@MyMod/{addons,keys} (+ mod.cpp if you wrote one) - this folder is what you upload
 $S build --binarize-models   # same, and convert .p3d/.rtm to ODOL via binarize.exe under Proton (Linux)
 $S check             # no key in git/history/upload folder, every signature verifies
 $S publish-hint      # prints the exact `workshop create|update` commands (does not run them)
@@ -63,7 +63,7 @@ MyMod/                     git repository
 ├── .dayzmod               MOD_NAME=MyMod
 ├── .gitignore             secrets/  *.biprivatekey  build/
 ├── .workshopignore        extra ignore list handed to the uploader
-├── mod.cpp                copied into the content folder
+├── mod.cpp                optional launcher metadata; copied into the content folder if present
 ├── src/MyMod/             -> addons/MyMod.pbo   (config.cpp, $PREFIX$, scripts/, data/)
 ├── src/MyMod_Data/        -> addons/MyMod_Data.pbo (optional further addons)
 ├── static/                copied verbatim into the content folder (logo.paa, ...)
@@ -71,7 +71,7 @@ MyMod/                     git repository
 ├── secrets/               PRIVATE key. Git-ignored. Back it up somewhere else, too.
 ├── workshop.toml          written by the uploader on `create`; commit it, build re-copies it
 └── build/@MyMod/          generated Workshop content (git-ignored)
-    ├── mod.cpp
+    ├── mod.cpp            (only if the project has one)
     ├── addons/MyMod.pbo + MyMod.pbo.MyMod.bisign
     ├── keys/MyMod.bikey
     └── workshop.toml
@@ -198,7 +198,7 @@ the official DayZ Publisher (`DayZ Tools/Bin/Publisher`):
 |---|---|---|---|
 | `addons/*.pbo` (+ `.bisign`) | yes; the Publisher refuses an upload without an `addons` folder in the root, or with `.pbo` files outside it (`addons` and `Addons` both occur) | no | armake2 (`build`, `sign`) |
 | `keys/*.bikey` | in most mods (some server-side-only items have none) | no | `keygen` |
-| `mod.cpp` | 135 of 438 (optional; the launcher shows its fields) | **no, in none of them** | you; `init` writes a stub |
+| `mod.cpp` | 135 of 438 (optional, not needed) | **no, in none of them** | you, if you want it; `init` does not write one |
 | `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it (id 0 before the first upload, like the Windows tools; the real id after) |
 
 So the assumption "the app id has to be in `mod.cpp`" does not hold. The id travels outside the mod:
@@ -209,8 +209,8 @@ and stores it in `workshop.toml` (which is never uploaded). Do not add an app id
 `author`, `picture`, `logo`, `logoSmall`, `logoOver`, `version`, `authorID` (Steam64 id); rarely `type`,
 `description`, `hidePicture`. `picture`/`logo*` are paths inside a PBO (CF uses
 `"JM/CF/GUI/textures/cf_icon.edds"`), so a logo has to ship in one of your addons. Keep `name`, `author`,
-`version` filled in; everything else can stay empty. 303 of the 438 installed items ship no `mod.cpp` at all, so it is optional; what the launcher shows for
-such an item was not tested. A locally loaded `-mod=` folder works without `meta.cpp` and `mod.cpp`.
+`version` filled in; everything else can stay empty. 303 of the 438 installed items ship no `mod.cpp` at all, so it is optional. The maintainer reports a mod works fine without it (**tested** by the maintainer, no build number recorded); what the launcher shows for
+such an item was not checked. A locally loaded `-mod=` folder works without `meta.cpp` and `mod.cpp`.
 
 **`meta.cpp`** (the Publisher writes it into every upload):
 
@@ -238,23 +238,35 @@ from `meta.cpp` was not tested.
 
 ## Workshop tags
 
-Queried from Steam's public API (`ISteamRemoteStorage/GetPublishedFileDetails`) for the 438 items in a local
-workshop directory (434 still available):
+Tags come in two groups. (Type/content split as given by the maintainer from the Workshop upload dialog; the
+counts below are from Steam's public API, `ISteamRemoteStorage/GetPublishedFileDetails`, for the 438 items in a
+local workshop directory, 434 still available.)
 
-| Tag | Items | Meaning |
-|---|---|---|
-| **`Mod`** | **434 of 434** | required: the Publisher refuses PBO content without it ("PBO files were included but tag 'mod' was not selected") and refuses `Mod` together with `Scenario` |
-| `Server` | 14 | server-side content ("Use this tag to label a server related content" in the Publisher); the 14 include maps, loadout and PVE mods. A *servermod* is therefore `Mod` + `Server`, not a separate `servermod` tag |
-| content tags | | `Mechanics` 118, `Equipment` 103, `Environment` 84, `Props` 75, `Character` 69, `Terrain` 46, `Sound` 38, `Economy` 37, `Vehicle` 32, `Animation` 32, `Weapon` 32 |
-| `Tag Review` | 16 | set by moderation; never set it yourself |
+**Type tag: exactly one of**
 
-No `servermod` or `Scenario` tag occurs on any of them. Usual combinations: `Mod` alone (167 items), `Mod` + one or more
-content tags, `Mod` + `Server` (8). Pick content tags that describe what the mod adds; there is no required one.
+| Tag | Use |
+|---|---|
+| `Mod` | every normal mod (client and server) |
+| `Server` | servermods only (loaded with `-servermod=`) |
 
-In the script the tags live in `.dayzmod` as `WORKSHOP_TAGS="Mod"` (`init <Name> --servermod` writes
-`"Mod Server"`). `check` fails without `Mod` and warns about unknown tags; `publish-hint` turns them into repeated
-`-t` options. `workshop create -t Mod -t Server ...` stores them in `workshop.toml`, `update` reuses them from there
-(Steam drops tags that are not sent along). Not tested: whether Steam itself rejects an upload without `Mod`.
+**Content tags: any number, combinable with either type tag**
+
+`Animation`, `Character`, `Economy`, `Environment`, `Equipment`, `Mechanics`, `Props`, `Sound`, `Terrain`, `Vehicle`,
+`Weapon`. Pick the ones that describe what the mod adds; none is required. (Seen on the 434 items: `Mechanics` 118,
+`Equipment` 103, `Environment` 84, `Props` 75, `Character` 69, `Terrain` 46, `Sound` 38, `Economy` 37, `Vehicle` 32,
+`Animation` 32, `Weapon` 32.)
+
+`Tag Review` is set by moderation; never set it yourself. There is no `servermod` or `Scenario` tag to use (the
+Publisher refuses `Mod` together with `Scenario`).
+
+The sample is older than this rule: all 434 items carry `Mod`, and 14 carry `Mod` together with `Server`. Do not copy
+that; a servermod gets `Server` instead of `Mod`. Not tested: whether Steam or the Publisher rejects both type tags
+at once, or none.
+
+In the script the tags live in `.dayzmod` as `WORKSHOP_TAGS="Mod Weapon"` (`init <Name> --servermod` writes
+`"Server"`). `check` fails unless exactly one of `Mod`/`Server` is present and warns about unknown tags;
+`publish-hint` turns them into repeated `-t` options. `workshop create -t Mod -t Weapon ...` stores them in
+`workshop.toml`, `update` reuses them from there (Steam drops tags that are not sent along).
 
 ## Uploading with `workshop`
 

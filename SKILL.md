@@ -189,7 +189,7 @@ section of `testing/client-testing.md`).
   the signature hash, so signed script mods fail on servers) and the uploader must be https://github.com/bzed/steam-workshop-uploader
   (it writes/updates `meta.cpp` on DayZ uploads). Look in `$PATH` first and check `armake2 -h 2>&1 | grep -- --proton-binarize`: a hit = the fork (it also binarizes models on Linux). If a tool is missing or is upstream, tell the user and have them install the fork.
 - The private key lives in a git-ignored `secrets/`, never in the content folder; never overwrite an existing key.
-- Workshop tags: `Mod` is required, `Server` marks server-side content (no `servermod` tag). Plain `build` rapifies configs only; models need `--binarize-models`.
+- Workshop tags: exactly one type tag, `Mod` or `Server` (`Server` = servermods only, never both), plus any number of content tags (Animation, Character, Economy, Environment, Equipment, Mechanics, Sound, Props, Terrain, Vehicle, Weapon). `mod.cpp` is optional; a mod works without it. Plain `build` rapifies configs only; models need `--binarize-models`.
 - Uploading to Steam is the user's call: print the `workshop` command with `publish-hint`, never run it unprompted.
 
 ### Local knowledge

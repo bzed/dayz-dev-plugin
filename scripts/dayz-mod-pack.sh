@@ -3,18 +3,18 @@
 #
 # Project layout (created by `init`, filled by `keygen` and `build`):
 #   .dayzmod            MOD_NAME=MyMod (read by every command)
-#   mod.cpp             mod metadata, copied to the content folder
+#   mod.cpp             OPTIONAL launcher metadata (not created by init); copied to the content folder if present
 #   src/<Addon>/        one folder per PBO: config.cpp, $PREFIX$, scripts/, data/ ...
 #   static/             copied verbatim into the content folder (logos, README, ...)
 #   keys/<Key>.bikey    PUBLIC key, safe to commit; shipped to server owners
 #   secrets/            PRIVATE key (<Key>.biprivatekey). Git-ignored, never copied anywhere.
 #   workshop.toml       written by `workshop create`; kept in git, copied into the content folder
-#   build/@<MyMod>/     the Workshop content folder: addons/*.pbo + *.bisign, keys/, mod.cpp
+#   build/@<MyMod>/     the Workshop content folder: addons/*.pbo + *.bisign, keys/ (+ mod.cpp if you have one)
 #
 # Usage: dayz-mod-pack.sh [-C <projectdir>] <command> [options]
 #   init <ModName> [--servermod]
-#                           create the folders, .gitignore, .workshopignore, mod.cpp stub; WORKSHOP_TAGS in
-#                           .dayzmod defaults to "Mod" ("Mod Server" with --servermod)
+#                           create the folders, .gitignore, .workshopignore; WORKSHOP_TAGS in .dayzmod
+#                           defaults to "Mod" ("Server" with --servermod; exactly one of the two)
 #   keygen                  create secrets/<Key>.biprivatekey and keys/<Key>.bikey (refuses to overwrite)
 #   build [--no-bin] [--v2] [--binarize-models]
 #                           build+sign every src/<Addon>/ and assemble build/@<ModName>/
@@ -67,10 +67,10 @@ need_armake2() {
 
 cmd_init() {
     local name=${1:?usage: init <ModName> [--servermod]} tags="Mod"
-    [ "${2:-}" = "--servermod" ] && tags="Mod Server"
+    [ "${2:-}" = "--servermod" ] && tags="Server"
     case "$name" in *[!A-Za-z0-9_]*|"") die "ModName may only contain letters, digits and _ (it becomes the key name and the PBO prefix)";; esac
     mkdir -p "$PROJECT/src" "$PROJECT/keys" "$PROJECT/secrets" "$PROJECT/static"
-    # WORKSHOP_TAGS: Steam Workshop tags for app 221100. "Mod" is required; "Server" marks server-side content.
+    # WORKSHOP_TAGS: Steam Workshop tags for app 221100: exactly one type tag (Mod, or Server for servermods) plus any content tags.
     [ -f "$PROJECT/.dayzmod" ] || printf 'MOD_NAME=%s\nWORKSHOP_TAGS="%s"\n' "$name" "$tags" > "$PROJECT/.dayzmod"
 
     # .gitignore: append only the lines that are missing, never rewrite the user's file.
@@ -81,21 +81,6 @@ cmd_init() {
     # Belt and braces for the uploader: pass this with --ignore-file (see publish-hint).
     [ -f "$PROJECT/.workshopignore" ] || printf '*.biprivatekey\nsecrets/\n*.psd\n*.xcf\n*.kra\n*.blend\n*.blend1\n.git*\n' > "$PROJECT/.workshopignore"
     # A private key left in the project root by mistake should never be committed either.
-    # Fields seen in real Workshop mods (CF and others). No app id here: the app id lives in workshop.toml / --app-id.
-    # picture/logo* are paths INSIDE a PBO (prefix-relative, e.g. "MyMod/gui/logo.paa"); leave empty until you ship one.
-    [ -f "$PROJECT/mod.cpp" ] || cat > "$PROJECT/mod.cpp" <<EOF
-name = "$name";
-picture = "";
-logo = "";
-logoSmall = "";
-logoOver = "";
-tooltip = "$name";
-overview = "";
-action = "";
-author = "";
-authorID = "";
-version = "1.0";
-EOF
     local addon
     for addon in "$PROJECT"/src/*/; do
         [ -d "$addon" ] || continue
@@ -200,16 +185,17 @@ cmd_build() {
     ( cd "$CONTENT" && find . -type f | sort | sed 's|^\./|   |' )
 }
 
-# Tags seen on the 438 DayZ Workshop items checked (Steam API): every item has Mod; Server marks server-side content.
-KNOWN_TAGS="Mod Server Mechanics Equipment Environment Props Character Terrain Sound Economy Vehicle Animation Weapon"
+# Type tags: exactly one of Mod / Server (Server = servermods only). Content tags: any number, combinable with either.
+TYPE_TAGS="Mod Server"
+CONTENT_TAGS="Animation Character Economy Environment Equipment Mechanics Sound Props Terrain Vehicle Weapon"
 check_tags() {
-    local t ok=1 hasmod=0
+    local t ntype=0
     for t in $WORKSHOP_TAGS; do
-        [ "$t" = Mod ] && hasmod=1
-        case " $KNOWN_TAGS " in *" $t "*) ;; *) echo "warn: tag '$t' is not one of the tags seen on DayZ items ($KNOWN_TAGS)"; ;; esac
+        case " $TYPE_TAGS " in *" $t "*) ntype=$((ntype + 1)); continue;; esac
+        case " $CONTENT_TAGS " in *" $t "*) ;; *) echo "warn: tag '$t' is not a known DayZ tag ($TYPE_TAGS $CONTENT_TAGS)"; ;; esac
         [ "$t" = "Tag Review" ] && echo "warn: 'Tag Review' is a moderation tag; do not set it yourself"
     done
-    if [ "$hasmod" = 1 ]; then echo "ok: tags: $WORKSHOP_TAGS"; else echo "FAIL: WORKSHOP_TAGS must contain Mod (the Publisher rejects PBOs without it)" >&2; return 1; fi
+    if [ "$ntype" = 1 ]; then echo "ok: tags: $WORKSHOP_TAGS"; else echo "FAIL: WORKSHOP_TAGS must contain exactly one of: $TYPE_TAGS (got $ntype)" >&2; return 1; fi
 }
 
 cmd_check() {
@@ -237,7 +223,7 @@ cmd_check() {
         if find "$CONTENT" -iname '*.pbo' -not -ipath "$CONTENT/addons/*" | grep -q .; then
             echo "FAIL: .pbo files outside addons/" >&2; bad=1; fi
         if [ -f "$CONTENT/mod.cpp" ] && grep -q '^ *name *=' "$CONTENT/mod.cpp"; then echo "ok: mod.cpp has a name"
-        else echo "warn: no mod.cpp with a name in the content folder (optional, but the launcher shows it)"; fi
+        else echo "note: no mod.cpp with a name in the content folder (optional; the mod works without)"; fi
         if [ ! -f "$CONTENT/meta.cpp" ]; then echo "warn: no meta.cpp; run build"
         elif grep -q 'publishedid *= *0;' "$CONTENT/meta.cpp" && [ -f "$CONTENT/workshop.toml" ]; then
             echo "warn: meta.cpp still has publishedid = 0 but workshop.toml exists; run build again"; fi
