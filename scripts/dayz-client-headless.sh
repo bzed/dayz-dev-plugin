@@ -70,6 +70,7 @@ export STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_ROOT"
 export STEAM_COMPAT_INSTALL_PATH="$game"
 export STEAM_COMPAT_APP_ID=$app SteamAppId=$app SteamGameId=$app
 export PROTON_ENABLE_WAYLAND=1
+export PROTON_BATTLEYE_RUNTIME="$STEAM_ROOT/steamapps/common/Proton BattlEye Runtime"
 cd "$game"
 set --
 while IFS= read -r a; do set -- "\$@" "\$a"; done < "$state/args"
