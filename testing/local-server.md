@@ -78,8 +78,8 @@ load on the stable server *and* the experimental one. Steam installs them as sep
 ```sh
 "${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e -v    # experimental server
 "${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e -w    # experimental client's workshop dir
-TREE29=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-test-129)
-TREE30=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-test-130 "$("${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e)")
+TREE29=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test-129)
+TREE30=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test-130 "$("${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e)")
 ```
 
 - One tree per version. They may run at the same time (separate trees, separate random ports), and the
@@ -104,7 +104,7 @@ in the mission folders and core dumps in the working directory.
 that symlinks into them, and run the server from that tree:
 
 ```sh
-TREE=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-testserver)   # any path outside Steam
+TREE=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-testserver)   # any path outside Steam
 ```
 
 `make-server-tree.sh [<tree>] [<steam server dir>]` finds the install with `find-dayzserver.sh`
@@ -139,8 +139,8 @@ To debug several configurations in parallel (with and without a mod, two mods ag
 a baseline next to a change), give every server a tree of its own:
 
 ```sh
-TREE_A=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-testserver-a)
-TREE_B=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" ~/dayz-testserver-b)
+TREE_A=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-testserver-a)
+TREE_B=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-testserver-b)
 ```
 
 Every tree has its own `profiles/`, `mpmissions/` and `battleye/`, so nothing is shared except
