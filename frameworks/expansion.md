@@ -5,12 +5,67 @@
 > **Wiki:** https://github.com/salutesh/DayZ-Expansion-Scripts/wiki
 > **Minimum for 1.28:** Expansion 1.9.28
 
-## DayZ 1.30 (Expansion Experimental 1.9.74)
+## Requirements (read this first)
 
-Expansion Experimental **1.9.74** is built for DayZ Experimental **1.30**. On a 1.30 server use **CF-Test** (and
-**COT-Test** if you use COT) instead of CF/COT, and keep the server profile folder **inside the server executable's folder**
-(a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134). Switch back to CF/COT once 1.30 is released.
-Details: `frameworks/community-framework.md`, `compatibility/version-130.md` section 2.
+**DayZ-Expansion-Bundle does not run on its own.** It needs three other mods, loaded before it:
+
+1. **Community Framework** (CF): `JM_CF_Scripts`. On 1.30 experimental: **CF-Test**.
+2. **Dabs Framework**: not pulled in by the Bundle or by CF, and not mentioned in Expansion's own mod list. Without it the Game module fails to compile (see below).
+3. **DayZ-Expansion-Licensed**: the licensed assets and scripts the Bundle's modules depend on (a separate Workshop item).
+
+Then the Bundle, then your mod. A server that misses any of the three fails in script compile, usually with a
+first error followed by hundreds of cascade errors. Fix the first one.
+
+### Until DayZ 1.30 is released (stable: Oct 15, 2026)
+
+While 1.30 is still experimental, a 1.30 server needs all of this at once:
+
+- **CF-Test** instead of CF (and **COT-Test** instead of COT if you use COT).
+- The **`-experimental`** Expansion items: **Licensed-Experimental** and **Bundle-Experimental** (not the stable ones).
+- The server started with **`-newErrorsAreWarnings=1`** (reported by the user, not tested here; it turns the new 1.30 script
+  compile errors into warnings so Expansion still loads).
+- The profile folder inside the server executable's folder (a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134).
+
+After the 1.30 release switch back to CF/COT and the regular Licensed and Bundle items, and drop `-newErrorsAreWarnings=1`
+once the Expansion build compiles clean without it. 1.29 stable keeps using the stable set. Details:
+`frameworks/community-framework.md`, `compatibility/version-130.md` section 2.
+
+Example 1.30 experimental start (mods in load order):
+
+```
+-mod=@CF-Test;@DabsFramework;@DayZ-Expansion-Licensed-Experimental;@DayZ-Expansion-Bundle-Experimental;@YourMod \
+  -profiles=profile -newErrorsAreWarnings=1
+```
+
+## Local test server with Expansion: the full mod set
+
+Load these, **in this order** (Workshop ids; `-mod=` / symlinked `@` folders):
+
+| # | Mod | 1.29 stable | 1.30 experimental |
+|---|-----|-------------|-------------------|
+| 1 | Community Framework | 1559212036 | **CF-Test** 1625463737 |
+| 2 | **Dabs Framework** (required) | 2545327648 | needs the 1.30 fix, see below |
+| 3 | DayZ-Expansion-Licensed (required) | 2116157322 | 2178159769 (Licensed-Experimental) |
+| 4 | DayZ-Expansion-Bundle (all modules, incl. Navigation, Vehicles, Garage) | 2572331007 | 2540096189 (Bundle-Experimental) |
+| 5 | your mod (last) | | |
+
+All keys come with the mods (`keys/*.bikey`).
+
+- **Without Dabs** the Game module fails with `Undefined function 'Math.Exp'` (Dabs defines `Math.Exp`),
+  followed by hundreds of `Bad type 'JsonFileLoader'` / `'array'` cascade errors. Fix the first error, not the cascade. (tested)
+- **Dabs on 1.30:** the Workshop build (2545327648) does not compile on 1.30
+  (`DabsFramework/.../MVC/Types/Types.c(52): Syntax error`, missing `;` after the `RelayCommandHashMap` typedef).
+  The fix is in the fork branch `fix/1.30-compat-staging` (checkout `DayZ-Dabs-Framework`): build its `DabsFramework/Scripts` with
+  armake2 (`$PBOPREFIX$` = `DabsFramework\Scripts`), sign it, and use the Workshop `GUI.pbo` unchanged. Then Game/World/Mission compile on 1.30. (tested)
+- Expansion 1.9.73 (Bundle) boots on 1.29 with 0 script errors; Expansion 1.9.76 experimental boots on 1.30 with the Dabs fix.
+  On the 1.30 diag build the Expansion AI NPC classes (`ExpansionQuestNPCAI*`, `ExpansionP2PTraderAI*`) throw
+  `Index out of bounds` VM exceptions in the hundreds: Expansion's own, unrelated to your mod. (tested)
+- `-newErrorsAreWarnings=1` on 1.30: see "Until DayZ 1.30 is released" above (reported by the user, not tested here).
+- Navigation/Vehicles are detected with `#ifdef EXPANSIONMODNAVIGATION` / `EXPANSIONMODVEHICLE` (defined by the Expansion preload
+  scripts, so they work whatever the mod order).
+- `modded class` must live in the **same script module as the class it modifies**: `Transport` is a `3_Game` class, so
+  `modded class Transport` in `4_World` fails with `Unknown type 'Transport'` (tested). Hook `CarScript`/`BoatScript` (and `MotorbikeScript` on 1.30) instead.
+- A string built with `"x" + (bool expression)` crashed the 1.29 server during World compile (no script error, just a crash dump). Use `bool.ToString()`.
 
 ## Module System
 

@@ -86,7 +86,7 @@ BI said the fix comes *after* the 1.30 release, so mods must work around it.
 > the server folder. Same for `-mission=` / the mission folder and `-storage=`. Fix:
 > `ln -s /srv/dz/profile <server folder>/profile` and start with `-profiles=profile`.
 > Until 1.30 stable, mods that use CF need **CF-Test** (and **COT-Test** instead of COT if you use COT; Expansion
-> Experimental 1.9.74 is built for this). With 1.30 stable (or earlier) switch back to CF/COT. See
+> needs the `-experimental` Licensed + Bundle items, Dabs Framework and `-newErrorsAreWarnings=1` on top; see `frameworks/expansion.md`). With 1.30 stable (or earlier) switch back to CF/COT. See
 > `frameworks/community-framework.md`.
 
 Results of the test matrix (each cell: 1.29 / 1.30):

@@ -34,7 +34,7 @@ for any review, port or "does this still work" question. The essentials, all ver
   calls `CF.ResolvePath`); without a CF dependency use the fallback `compatibility/YOURMOD_FindFilePath.c`. All other file
   functions still accept the placeholders.
 - **1.30 servers need the profile folder inside the server executable's folder** (symlink ok; `-profiles=profile`, not an
-  absolute path elsewhere) and **CF-Test** (+ **COT-Test** if COT is used) until 1.30 stable; Expansion Experimental 1.9.74 targets this.
+  absolute path elsewhere) and **CF-Test** (+ **COT-Test** if COT is used) until 1.30 stable; Expansion on 1.30 needs the `-experimental` Licensed + Bundle items, Dabs and CF-Test, and `-newErrorsAreWarnings=1` (`frameworks/expansion.md`).
   CF and our fallback helper both resolve `$profile:` relative to the server folder. See `compatibility/version-130.md` section 2.
 - **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
   This includes the `CfgMods` script module `files[]` in `config.cpp`: with backslashes a 1.30 server compiles none of
