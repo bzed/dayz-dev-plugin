@@ -37,6 +37,8 @@ for any review, port or "does this still work" question. The essentials, all ver
   absolute path elsewhere) and **CF-Test** (+ **COT-Test** if COT is used) until 1.30 stable; Expansion Experimental 1.9.74 targets this.
   CF and our fallback helper both resolve `$profile:` relative to the server folder. See `compatibility/version-130.md` section 2.
 - **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
+  This includes the `CfgMods` script module `files[]` in `config.cpp`: with backslashes a 1.30 server compiles none of
+  the mod's scripts and reports no error.
 - **Compile breakers**: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
   `Construction.SetParent(EntityAI)`, `CarScript.ToggleHeadlights()` removed (use `LightToggle()`).
 - **Silent breakers**: `OnCEUpdate()` overrides compile but are never called (use `OnCEIterate`);

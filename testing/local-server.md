@@ -302,6 +302,8 @@ bug in your code. Details and a chunking helper: `scripting/enforce-script.md`, 
 
    Common silent causes:
    - an absolute mod path;
+   - on 1.30: backslashes in the `CfgMods` script module paths (`files[] = {"MyMod\scripts\4_World"}`). 1.29
+     loads them; 1.30 ignores them without an error. Use forward slashes (`compatibility/version-130.md` section 2);
    - a PBO without the prefix header that `config.cpp`'s script paths expect. Packing with
      dayz-dev-tools needs `pbo -H prefix=<prefix> ...`; AddonBuilder uses `-prefix=`. Without it,
      the defines from `CfgMods` show up in the log, but no scripts do;

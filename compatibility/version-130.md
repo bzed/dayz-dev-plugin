@@ -116,6 +116,14 @@ Consequences:
   ignored it; don't rely on `-storage` together with `$storage:`.
 - **Use forward slashes in every path you build.** They work everywhere on both versions; backslashes
   break `FindFile` on 1.30. This includes paths assembled from parts (`dir + "/" + name`, not `"\\"`).
+- **Script module paths in `CfgMods` need forward slashes too (tested, Linux servers 1.29.163709 and
+  1.30.164014 experimental).** With `files[] = {"MyMod\scripts\4_World"};` a 1.30 server loads the mod's config
+  and shows its `CfgMods` defines, but compiles **none** of its scripts, and prints no error. The World
+  module count stays at vanilla (2321 instead of 2321 + the mod's files). 1.29 loads the same PBO fine. The
+  fix is `files[] = {"MyMod/scripts/4_World"};`, which works on both. The case of the folder name made no
+  difference (`scripts` against a real `Scripts` folder loaded on both). Found in Haralds Armory (Workshop
+  3325200572), whose five PBOs all used backslash paths. Windows servers were not tested. Check every
+  `worldScriptModule`/`gameScriptModule`/`missionScriptModule` entry, also in a debinarized `config.bin`.
 - **Replace every `FindFile` call with `CF.FindFileEx`** (Community Framework). It is a wrapper around
   `FindFile` that detects whether the bug is present and, if so, resolves the path with `CF.ResolvePath`,
   so it is a drop-in replacement and correct on 1.29, 1.30 and after BI fixes the engine. It ships in
@@ -390,6 +398,7 @@ servers (`testing/local-server.md`) and read `script_*.log` for `(E)` and `(W)`.
 [ ] server start: -profiles=<dir> inside the server executable's folder (symlink ok); CF-Test (+ COT-Test if COT) until 1.30 stable
 [ ] grep -rn 'FindFile' → CF.FindFileEx (or the YOURMOD_FindFilePath fallback without CF); open results via placeholder paths
 [ ] grep -rn '\\\\' in path strings → forward slashes everywhere (configs read from JSON too)
+[ ] grep -rn 'files\[\]' config.cpp → CfgMods script module paths with forward slashes (backslashes: 1.30 loads no scripts, silently)
 [ ] grep -rn '\$storage:' → never before the first OnUpdate/CallLater tick after OnMissionStart; not on a first boot (no storage_1); FindFile on it breaks on 1.30
 [ ] grep -rn 'GetMissionFolderPath' → returns "" on servers; derive from GetMissionPath()
 [ ] grep -rn 'ProcessVariables\|OnCEUpdate\|m_ElapsedSinceLastUpdate\|m_LastUpdatedTime' → #ifdef DAYZ_1_29 / OnCEIterate
