@@ -85,8 +85,8 @@ BI said the fix comes *after* the 1.30 release, so mods must work around it.
 > `FindFile` bug is the reason. An absolute `-profiles=/srv/dz/profile` is reduced to `profile` and looked up in
 > the server folder. Same for `-mission=` / the mission folder and `-storage=`. Fix:
 > `ln -s /srv/dz/profile <server folder>/profile` and start with `-profiles=profile`.
-> Until 1.30 stable, mods that use CF need **CF-Test** (and **COT-Test** instead of COT if you use COT; Expansion
-> needs the `-experimental` Licensed + Bundle items, Dabs Framework and `-newErrorsAreWarnings=1` on top; see `frameworks/expansion.md`). With 1.30 stable (or earlier) switch back to CF/COT. See
+> Mods that use CF need **CF 1.5.9 or newer** (the regular Workshop CF now contains the workaround; CF-Test and COT-Test are no longer needed; Expansion
+> needs the `-experimental` Licensed + Bundle items, Dabs Framework and `-newErrorsAreWarnings=1` on top; see `frameworks/expansion.md`). See
 > `frameworks/community-framework.md`.
 
 Results of the test matrix (each cell: 1.29 / 1.30):
@@ -127,8 +127,8 @@ Consequences:
 - **Replace every `FindFile` call with `CF.FindFileEx`** (Community Framework). It is a wrapper around
   `FindFile` that detects whether the bug is present and, if so, resolves the path with `CF.ResolvePath`,
   so it is a drop-in replacement and correct on 1.29, 1.30 and after BI fixes the engine. It ships in
-  **CF-Test** (Steam Workshop) now and is merged into **CF** for the 1.30 release. Needs a CF dependency
-  (`requiredAddons`/mod list). Reported by lava76 in DZEXP-134. Signature, read from CF-Test (Workshop 1625463737) source:
+  **CF 1.5.9+** (Steam Workshop; first as CF-Test, merged into CF before the 1.30 release). Needs a CF dependency
+  (`requiredAddons`/mod list). Reported by lava76 in DZEXP-134. Signature, read from CF 1.5.9 (Workshop 1559212036) source:
   `static FindFileHandle FindFileEx(string pattern, out string fileName, out FileAttr fileAttributes, FindFileFlags flags)`
   (same as `FindFile`, but `flags` has no default: always pass it).
   ```c
@@ -138,8 +138,8 @@ Consequences:
   ```
   Keep the loop, open-by-placeholder and `CloseFindFile` shape below unchanged.
 - **Mods without a CF dependency**: wrap every `FindFile` pattern with the bundled fallback helper `compatibility/YOURMOD_FindFilePath.c`
-  (rename `YOURMOD`, drop into `3_Game`). It is a port of CF-Test's `FindFileEx`/`ResolvePath`: on 1.29 it only flips slashes; on 1.30 it
-  tests once whether `FindFile` is broken and resolves `$profile:`/`$mission:`/`$storage:`/`$saves:` only if so **(helper tested on a 1.29.163709 and a 1.30.164014 server, same results as CF-Test)**:
+  (rename `YOURMOD`, drop into `3_Game`). It is a port of CF's `FindFileEx`/`ResolvePath`: on 1.29 it only flips slashes; on 1.30 it
+  tests once whether `FindFile` is broken and resolves `$profile:`/`$mission:`/`$storage:`/`$saves:` only if so **(helper tested on a 1.29.163709 and a 1.30.164014 server, same results as CF)**:
   ```c
   string fileName;
   FileAttr attr;
@@ -155,7 +155,7 @@ Consequences:
       CloseFindFile(h);
   ```
   Enforce Script has no `do { } while`: it fails with `Can't find variable 'do'` (tested), so use this shape.
-- How `CF.FindFileEx` works (CF-Test source): on non-1.29 builds it writes `$profile:cf_findfile_dz130_test`
+- How `CF.FindFileEx` works (CF 1.5.9 source): on non-1.29 builds it writes `$profile:cf_findfile_dz130_test`
   once, tries `FindFile` on it and, if that fails, resolves every pattern with `CF.ResolvePath`. So a fixed
   engine needs no workaround, and it needs a writable `$profile:`. `CF.ResolvePath(path)` also flips
   backslashes and handles `$profile:`, `$saves:` (`<profile>/Users/Server`), `$mission:`, `$storage:`,
@@ -167,12 +167,12 @@ Consequences:
   folder reduction, `$saves:`, mission order, existence warning), so a mod with and without CF behaves the same. Differences on purpose: it
   uses `Print` instead of `ErrorEx` (a VM exception on diag builds), reads the `template="..."` line of `serverDZ.cfg` itself
   (vanilla has no `ConfigFile`) and adds the `mpmissions/` prefix CF's version misses.
-- Resolution sources of the fallback helper (same as CF-Test): `$profile:` ← `-profiles=` CLI param (required; a server started
+- Resolution sources of the fallback helper (same as CF): `$profile:` ← `-profiles=` CLI param (required; a server started
   without it can't be resolved; absolute values keep only the last component, so the folder must be in the server folder),
   `$saves:` ← `<profile>/Users/Server`, `$mission:` ← folder of `g_Game.GetMissionPath()`, else `-mission=`, `$storage:` ←
   `-storage=<dir>` (same reduction) if given, else `<mission folder>`, plus `/storage_<instanceId>` (`serverDZ.cfg` `instanceId`, default 1).
-  Tested: 1.30 with `-profiles=<absolute dir outside the server folder>` logs the "does not exist" warning and `FindFile` finds nothing, as with CF-Test.
-  `$saves:*` finds nothing on 1.30 (`<profile>/Users/Server` is missing there), also like CF-Test.
+  Tested: 1.30 with `-profiles=<absolute dir outside the server folder>` logs the "does not exist" warning and `FindFile` finds nothing, as with CF.
+  `$saves:*` finds nothing on 1.30 (`<profile>/Users/Server` is missing there), also like CF.
   It prints a warning when the resolved folder does not exist.
 - **`g_Game.GetMissionFolderPath()` returns `""`** on both 1.29 and 1.30 servers (tested): vanilla's
   `SetMissionPath` only splits on `\`, but the engine passes `mpmissions/<mission>/mission.c`.
@@ -395,7 +395,7 @@ Run this on every mod before Oct 15. Each grep is a quick first pass, not a proo
 servers (`testing/local-server.md`) and read `script_*.log` for `(E)` and `(W)`.
 
 ```
-[ ] server start: -profiles=<dir> inside the server executable's folder (symlink ok); CF-Test (+ COT-Test if COT) until 1.30 stable
+[ ] server start: -profiles=<dir> inside the server executable's folder (symlink ok); CF 1.5.9+ (no CF-Test/COT-Test)
 [ ] grep -rn 'FindFile' → CF.FindFileEx (or the YOURMOD_FindFilePath fallback without CF); open results via placeholder paths
 [ ] grep -rn '\\\\' in path strings → forward slashes everywhere (configs read from JSON too)
 [ ] grep -rn 'files\[\]' config.cpp → CfgMods script module paths with forward slashes (backslashes: 1.30 loads no scripts, silently)

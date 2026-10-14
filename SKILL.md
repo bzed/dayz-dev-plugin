@@ -30,11 +30,11 @@ for any review, port or "does this still work" question. The essentials, all ver
   Put the *old* code under `#ifdef DAYZ_1_29` and the new code in `#else`, so the new path stays the default
   on 1.31+. The same PBO then loads on both. Prefer APIs that exist in both versions over `#ifdef`.
 - **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:` on 1.30** and silently searches the
-  server root instead. Replace every `FindFile` with `CF.FindFileEx` (CF-Test now, in CF from the 1.30 release; it detects the bug and
+  server root instead. Replace every `FindFile` with `CF.FindFileEx` (CF 1.5.9+; it detects the bug and
   calls `CF.ResolvePath`); without a CF dependency use the fallback `compatibility/YOURMOD_FindFilePath.c`. All other file
   functions still accept the placeholders.
 - **1.30 servers need the profile folder inside the server executable's folder** (symlink ok; `-profiles=profile`, not an
-  absolute path elsewhere) and **CF-Test** (+ **COT-Test** if COT is used) until 1.30 stable; Expansion on 1.30 needs the `-experimental` Licensed + Bundle items, Dabs and CF-Test, and `-newErrorsAreWarnings=1` (`frameworks/expansion.md`).
+  absolute path elsewhere) and **CF 1.5.9+** (the Workshop CF; no CF-Test/COT-Test needed any more); Expansion on 1.30 needs the `-experimental` Licensed + Bundle items, Dabs and CF, and `-newErrorsAreWarnings=1` (`frameworks/expansion.md`).
   CF and our fallback helper both resolve `$profile:` relative to the server folder. See `compatibility/version-130.md` section 2.
 - **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
   This includes the `CfgMods` script module `files[]` in `config.cpp`: with backslashes a 1.30 server compiles none of
@@ -168,7 +168,7 @@ DayZ-Script-Diff commits listed in https://diff.yadz.app/assets/versions.json.
 Experimental, 1042420). While 1.30 is experimental, boot every change on **both**, one tree each; if one is missing ask the user to
 install it through Steam (no steamcmd unless asked). **Never copy, edit or write anything in the Steam directories**: run from a
 tree made by `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>` with mods symlinked in and passed as relative `-servermod=`/`-mod=`
-paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran before CF or CF-Test is added to it** (CF changes how data is stored; stale storage gives CF/Storage errors; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
+paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran before CF is added to it** (CF changes how data is stored; stale storage gives CF/Storage errors; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
 RCon ports at the default**: use `${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3`. A PBO that builds is not a tested mod: boot it and
 compare script module counts with vanilla.
 

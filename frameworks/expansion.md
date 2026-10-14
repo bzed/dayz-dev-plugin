@@ -9,7 +9,7 @@
 
 **DayZ-Expansion-Bundle does not run on its own.** It needs three other mods, loaded before it:
 
-1. **Community Framework** (CF): `JM_CF_Scripts`. On 1.30 experimental: **CF-Test**.
+1. **Community Framework** (CF): `JM_CF_Scripts`. Use the current Workshop CF (1.5.9+) on 1.29 and 1.30; CF-Test is no longer needed.
 2. **Dabs Framework**: not pulled in by the Bundle or by CF, and not mentioned in Expansion's own mod list. Without it the Game module fails to compile (see below).
 3. **DayZ-Expansion-Licensed**: the licensed assets and scripts the Bundle's modules depend on (a separate Workshop item).
 
@@ -20,20 +20,19 @@ first error followed by hundreds of cascade errors. Fix the first one.
 
 While 1.30 is still experimental, a 1.30 server needs all of this at once:
 
-- **CF-Test** instead of CF (and **COT-Test** instead of COT if you use COT).
 - The **`-experimental`** Expansion items: **Licensed-Experimental** and **Bundle-Experimental** (not the stable ones).
 - The server started with **`-newErrorsAreWarnings=1`** (reported by the user, not tested here; it turns the new 1.30 script
   compile errors into warnings so Expansion still loads).
 - The profile folder inside the server executable's folder (a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134).
 
-After the 1.30 release switch back to CF/COT and the regular Licensed and Bundle items, and drop `-newErrorsAreWarnings=1`
+After the 1.30 release switch to the regular Licensed and Bundle items, and drop `-newErrorsAreWarnings=1`
 once the Expansion build compiles clean without it. 1.29 stable keeps using the stable set. Details:
 `frameworks/community-framework.md`, `compatibility/version-130.md` section 2.
 
 Example 1.30 experimental start (mods in load order):
 
 ```
--mod=@CF-Test;@DabsFramework;@DayZ-Expansion-Licensed-Experimental;@DayZ-Expansion-Bundle-Experimental;@YourMod \
+-mod=@CF;@DabsFramework;@DayZ-Expansion-Licensed-Experimental;@DayZ-Expansion-Bundle-Experimental;@YourMod \
   -profiles=profile -newErrorsAreWarnings=1
 ```
 
@@ -43,7 +42,7 @@ Load these, **in this order** (Workshop ids; `-mod=` / symlinked `@` folders):
 
 | # | Mod | 1.29 stable | 1.30 experimental |
 |---|-----|-------------|-------------------|
-| 1 | Community Framework | 1559212036 | **CF-Test** 1625463737 |
+| 1 | Community Framework (1.5.9+) | 1559212036 | 1559212036 |
 | 2 | **Dabs Framework** (required) | 2545327648 | needs the 1.30 fix, see below |
 | 3 | DayZ-Expansion-Licensed (required) | 2116157322 | 2178159769 (Licensed-Experimental) |
 | 4 | DayZ-Expansion-Bundle (all modules, incl. Navigation, Vehicles, Garage) | 2572331007 | 2540096189 (Bundle-Experimental) |

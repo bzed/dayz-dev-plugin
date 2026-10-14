@@ -1,27 +1,24 @@
 # Community Framework (CF)
 
-> **CF (released):** Steam Workshop **1559212036**, version **1.5.8** (PBO built 2026-02-19), the build for DayZ **1.29** stable
-> **CF-Test (pre-release):** Steam Workshop **1625463737**, `mod.cpp` says 1.5.9 (PBO built 2026-10-03), the build for DayZ **1.30** experimental
+> **CF:** Steam Workshop **1559212036**, version **1.5.9**, the build for DayZ **1.29** stable and **1.30** (experimental, stable Oct 15, 2026)
 > **GitHub:** https://github.com/Arkensor/DayZ-CommunityFramework
 > **Minimum for 1.28:** CF 1.5.7
-> **Source of truth:** both Workshop PBOs were unpacked and diffed, and CF-Test was booted with a test mod on
+> **CF-Test (1625463737) is obsolete:** the Workshop CF 1.5.9 PBOs (`scripts`, `gui`, `legacy`) are byte-identical to the last CF-Test build (checked 2026-10-14).
+> **Source of truth:** the CF-Test build was unpacked, diffed against CF 1.5.8 and booted with a test mod on
 > a 1.29.163709 and a 1.30.164014 experimental server (Oct 3, 2026). Statements marked **(tested)** were observed there.
 
-## Which CF to use (1.29 stable vs 1.30 experimental)
+## Which CF to use (1.29 stable vs 1.30)
 
-| Target | Mod to subscribe to / ship against | Notes |
-|---|---|---|
-| 1.29 stable only | **CF** (1559212036, 1.5.8) | Nothing else needed |
-| 1.29 and 1.30 (the situation until Oct 15, 2026) | **CF-Test** (1625463737) on the servers you test 1.30 on | One mod build, one CF dependency (`JM_CF_Scripts`) for both |
-| 1.30 stable (from Oct 15, 2026) | **CF** once Jacob/Arkensor merge CF-Test into it | Reported by lava76 in DZEXP-134; not released yet when this was written |
+Use the regular **CF 1.5.9 or newer** (1559212036) for 1.29 and 1.30. One mod build, one CF dependency (`JM_CF_Scripts`) for both.
+Do not subscribe to or depend on **CF-Test**; if a launcher or server still has it, replace it with CF (same `CfgPatches`
+class `JM_CF_Scripts` and `CfgMods` class `JM_CommunityFramework`, so `requiredAddons[] = {"DZ_Data", "JM_CF_Scripts"};` is unchanged).
+Load only **one** of the two: both declare `JM_CF_Scripts` and conflict. COT works the same: the current Community Online Tools
+(1564026768) already calls `CF.FindFileEx`, so **COT-Test is not needed either**.
 
-- **CF and CF-Test are drop-in replacements for each other.** Both declare `CfgPatches` class `JM_CF_Scripts` and
-  `CfgMods` class `JM_CommunityFramework`, so your `requiredAddons[] = {"DZ_Data", "JM_CF_Scripts"};` is
-  unchanged, and you must load only **one** of them. (The CF-Test `config.cpp` still says `version = "1.5.8"`
-  while its `mod.cpp` says 1.5.9; don't test for the version string.)
-- **CF-Test loads on both servers (tested).** The same unmodified PBO compiled on 1.29.163709 and on 1.30.164014
+- **CF 1.5.9 loads on both servers (tested, as CF-Test).** The same unmodified PBO compiled on 1.29.163709 and on 1.30.164014
   experimental, with no `SCRIPT (E)` lines from CF itself. 1.30-only code in it is behind `#ifndef DAYZ_1_29`.
-- **What CF-Test changes compared with CF 1.5.8** (unpacked-source diff, 19 files):
+  (The `config.cpp` `version = "1.5.8"` string was never updated; don't test for the version string.)
+- **What 1.5.9 changes compared with CF 1.5.8** (unpacked-source diff, 19 files):
   - **New `CF.ResolvePath` and `CF.FindFileEx`** for DZEXP-134, see [FindFile](#cffindfileex-and-cfresolvepath).
   - **`MotorbikeScript` gets ModStorage** (`#ifndef DAYZ_1_29`; the motorbike is new in 1.30).
   - **ModStorage hardening:** `AdvancedCommunication`, `AnimalBase`, `BuildingBase` and `ZombieBase` create their
@@ -36,11 +33,11 @@
 - **Experimental servers are diag builds**, so any `Error()` inside CF (for example "Could not determine mission
   folder") shows up as a `Virtual Machine Exception` there (see `compatibility/version-130.md`).
 
-### Requirements for 1.30 experimental servers (CF-Test / COT-Test)
+### Requirements for 1.30 servers
 
 Announced with **DayZ Expansion Experimental 1.9.74** (for DayZ Experimental 1.30), to test your setup under 1.30:
 
-- Use **CF-Test**, and **COT-Test** (Community-Online-Tools-Test, Steam Workshop **1618340505**) if you use COT (Community Online Tools, 1564026768). Not CF/COT: they lack the FindFile workaround.
+- Use **CF 1.5.9+** (and the current COT if you use COT). Older CF/COT lack the FindFile workaround.
 - **The server profile folder must be inside the server executable's folder** (a symlink works too). Otherwise the
   game cannot find it, because of the vanilla 1.30 `FindFile` bug (DZEXP-134): the workaround resolves `$profile:`
   to a path relative to the server folder and only keeps the last component of `-profiles=`.
@@ -48,28 +45,22 @@ Announced with **DayZ Expansion Experimental 1.9.74** (for DayZ Experimental 1.3
   ln -s /data/dayz/profile /srv/dayz/server/profile   # real profile elsewhere
   ./DayZServer -profiles=profile ...                  # never -profiles=/data/dayz/profile
   ```
-- Until 1.30 stable CF-Test is required; with the 1.30 release (maybe earlier) switch back to CF/COT, no code change.
 - Mods without a CF dependency get the same behavior from `compatibility/YOURMOD_FindFilePath.c`, so with or without CF
   the profile folder rule is identical.
 
-### Using CF-Test when you target experimental
+### Starting a 1.30 server with CF
 
-1. Subscribe to **CF-Test** on the Steam Workshop (a normal Workshop item, `workshop/content/221100/1625463737`).
-   Remove or deactivate **CF** in the same launcher profile/server: two copies of `JM_CF_Scripts` conflict.
-2. On a server, load it like CF: `-mod=@CF-Test` (client-side) with its `.bikey` (`keys/Jacob_Mango_V3.bikey`) in the
+1. Load **CF** like any mod: `-mod=@CF` (client-side) with its `.bikey` (`keys/Jacob_Mango_V3.bikey`) in the
    server's `keys/`. For local tests symlink the item into your own server tree (`testing/local-server.md`).
-3. Start the experimental server with **`-profiles=<dir>`** and **`-mission=mpmissions/<mission folder>`**. CF's
+2. Start the server with **`-profiles=<dir>`** and **`-mission=mpmissions/<mission folder>`**. CF's
    path resolution reads both **(tested)**. Without `-mission`, CF falls back to the `Missions DayZ template`
    from `-config=`, which is only the folder name (`dayzOffline.chernarusplus`, no `mpmissions/`), so `$mission:`
    and `$storage:` resolve to a folder that doesn't exist: `FindFileEx` returns nothing and the diag build prints
    a `Virtual Machine Exception`. With `-mission=mpmissions/dayzOffline.chernarusplus` both worked.
-4. CF-Test needs a writable `$profile:` (it creates `cf_findfile_dz130_test` there once) and `-profiles` must
+3. CF needs a writable `$profile:` (it creates `cf_findfile_dz130_test` there once) and `-profiles` must
    be a folder under the game directory (it only keeps the last path component; see the requirement above). It logs
    "Profile folder X does not exist inside game directory" otherwise. Mission folder order: `GetMissionPath()`, `-mission=`,
    `-config=` template, world-name guess.
-5. When 1.30 stable ships and CF contains the merged code, swap CF-Test back for **CF** (same `requiredAddons`, no
-   code change in your mod). Until then, don't make a mod depend on CF-Test's Workshop ID: depend on
-   `JM_CF_Scripts` and tell users either CF or CF-Test satisfies it.
 
 ## Overview
 
@@ -261,7 +252,7 @@ Per-entity persistent storage that survives server restarts and is namespaced pe
 store data on the same entity without breaking each other's `OnStoreLoad` order. Don't override vanilla
 `OnStoreSave`/`OnStoreLoad` for this: CF already does, and writes a header the vanilla version doesn't know.
 Override the CF hooks instead. They exist on `ItemBase`, `AdvancedCommunication`, `AnimalBase`, `BuildingBase`, `ZombieBase`
-(and `MotorbikeScript` in CF-Test / 1.30) and are keyed by your `CfgMods` class name:
+(and `MotorbikeScript` in CF 1.5.9 / 1.30) and are keyed by your `CfgMods` class name:
 
 ```c
 modded class KitBase // extends from ItemBase
@@ -292,9 +283,9 @@ modded class KitBase // extends from ItemBase
 
 - The mod version used by `ctx.GetVersion()` is `storageVersion` in your `CfgMods` class.
 - **Note (CF 1.5.7+):** ModStorage no longer requires a custom class inheriting from `ModStructure`.
-- **CF 1.5.8 vs CF-Test:** CF-Test adds `MotorbikeScript` (1.30) and rejects a corrupt header
+- **CF 1.5.8 vs 1.5.9:** 1.5.9 adds `MotorbikeScript` (1.30) and rejects a corrupt header
   (`Corrupt modstorage header, unsupported CF version ... or too many mods`) by returning `false` from the load.
-  A storage written by CF-Test (and DayZ 1.30) should be treated as not loadable by 1.29, as for vanilla
+  A storage written by CF 1.5.9 on DayZ 1.30 should be treated as not loadable by 1.29, as for vanilla
   (`compatibility/version-130.md`, persistence).
 
 ## NetworkedVariables
@@ -356,12 +347,11 @@ text. There are no static `IntToString`/`StringToInt` helpers in CF 1.5.8; use t
 
 DayZ 1.30's `FindFile` ignores `$profile:`/`$mission:`/`$saves:` (DZEXP-134, fix only after release).
 CF adds `CF.ResolvePath` (prefixed path -> real path) and `CF.FindFileEx`, a drop-in `FindFile` wrapper that
-tests for the bug and resolves the path only when needed. Use it for every `FindFile` call. **Only in CF-Test
-(1.30 experimental) for now; CF 1.5.8 does not have it**, and it is merged into CF for the 1.30 stable release.
+tests for the bug and resolves the path only when needed. Use it for every `FindFile` call. **Needs CF 1.5.9+; CF 1.5.8 does not have it.**
 Signature: `CF.FindFileEx(string pattern, out string fileName, out FileAttr attr, FindFileFlags flags)`
 (`flags` has no default).
 
-Tested with CF-Test on both servers (first call after the mission started, `-profiles=profiles -mission=mpmissions/dayzOffline.chernarusplus`):
+Tested with CF 1.5.9 (as CF-Test) on both servers (first call after the mission started, `-profiles=profiles -mission=mpmissions/dayzOffline.chernarusplus`):
 
 | Pattern | 1.29 | 1.30 experimental |
 |---|---|---|
@@ -392,13 +382,13 @@ class CfgPatches
 - Millisecond logging timestamps
 - Non-ASCII character handling fixes
 
-## CF 1.5.8 (released, DayZ 1.29)
+## CF 1.5.8 (DayZ 1.29)
 - `CF_Byte::ToHex` renamed to `CF_ToHex`
 - No longer creating new `CF_EventUpdateArgs` each OnUpdate (performance)
 - `GetGame()` -> `g_Game` optimization recommended
 - Defines exported by `CfgMods` (usable in `#ifdef`): `CF_MODULES`, `CF_MODSTORAGE`, `CF_SURFACES`, `CF_EXPRESSION`,
   `CF_ONUPDATE_RATE_LIMIT`, `CF_LOG_TIMESTAMP`, ... Use `#ifdef CF_MODULES` to detect CF without a hard dependency.
 
-## CF-Test 1.5.9 (pre-release, DayZ 1.30)
-See [Which CF to use](#which-cf-to-use-129-stable-vs-130-experimental): `CF.FindFileEx`/`CF.ResolvePath`, `MotorbikeScript`
+## CF 1.5.9 (DayZ 1.29 and 1.30)
+See [Which CF to use](#which-cf-to-use-129-stable-vs-130): `CF.FindFileEx`/`CF.ResolvePath`, `MotorbikeScript`
 ModStorage, corrupt-header check, persistent input wrappers.

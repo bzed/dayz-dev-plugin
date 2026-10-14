@@ -149,7 +149,7 @@ second `-profiles=` at a directory inside the first tree as a shortcut: `mpmissi
 be shared, and its `storage_1/` is the other lock. Sequential runs may reuse one tree.
 
 On 1.30 keep `-profiles=profiles` (the tree's own folder, or a symlink in the tree to elsewhere): the `FindFile` workaround
-in CF-Test/COT-Test and in `compatibility/YOURMOD_FindFilePath.c` only finds a profile folder inside the server executable's
+in CF/COT and in `compatibility/YOURMOD_FindFilePath.c` only finds a profile folder inside the server executable's
 folder. An absolute `-profiles=` outside the tree is cut to its last component and `FindFile` finds nothing.
 
 ### Never leave a port at its default
@@ -221,10 +221,10 @@ If a needed mod is missing, ask the user to subscribe to it in the Steam Worksho
 DayZ launcher once so Steam downloads it. Never `steamcmd +workshop_download_item` into the
 Steam directories.
 
-### Wipe the storage when CF or CF-Test comes into a tree that already ran
+### Wipe the storage when CF comes into a tree that already ran
 
 **Rule (from bzed's experience): if a server was already run in a tree, or an existing storage directory
-is reused, and CF or CF-Test is installed afterwards, the storage directory must be wiped.** CF digs deep
+is reused, and CF is installed afterwards, the storage directory must be wiped.** CF digs deep
 into the way DayZ stores things, and the old storage then produces errors from CF/Storage on the next
 boot or when players load.
 
@@ -243,7 +243,7 @@ rm -rf "$TREE/mpmissions/"*/storage_1     # persistence: players.db, data/, back
 **Not reproduced here.** An attempt to produce the error on DayZ 1.29.163709 did not show it: a tree run
 vanilla (storage 3.3 MB), then with a real player saved by a vanilla client (6.5 MB), then booted with
 the installed CF (Workshop 1559212036) and the same player reconnecting with CF on the client. The server's
-script log and RPT and the client's script log stayed clean. CF-Test and mods that persist their own item,
+script log and RPT and the client's script log stayed clean. Mods that persist their own item,
 vehicle or tent state were not tried, and are the likely trigger. The rule above is therefore reported, not
 verified by us; if you capture the actual error text, add it here.
 

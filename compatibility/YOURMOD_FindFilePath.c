@@ -1,8 +1,8 @@
 /**
  * FALLBACK FindFile path helper for DayZ 1.29 + 1.30 (server side), for mods WITHOUT a Community Framework
- * dependency. If your mod uses CF, call CF.FindFileEx instead (CF-Test now, part of CF from 1.30).
+ * dependency. If your mod uses CF, call CF.FindFileEx instead (CF 1.5.9+).
  *
- * This is a port of CF-Test's CF.FindFileEx / CF.ResolvePath (Workshop 1625463737, built 2026-10-06), so mods with
+ * This is a port of CF's CF.FindFileEx / CF.ResolvePath (CF 1.5.9, Workshop 1559212036; the former CF-Test build is identical), so mods with
  * and without CF behave the same. Copy into your mod's 3_Game folder and replace YOURMOD with your mod's prefix.
  * Wrap every FindFile() pattern with it:
  *
@@ -10,7 +10,7 @@
  *     FileAttr attr;
  *     FindFileHandle h = FindFile(YOURMOD_FindFilePath("$profile:YOURMOD/*.json"), fileName, attr, FindFileFlags.ALL);
  *
- * Behavior (identical to CF-Test):
+ * Behavior (identical to CF 1.5.9):
  * - Backslashes are always turned into forward slashes (1.30 FindFile finds nothing with backslashes).
  * - 1.29 (DAYZ_1_29): nothing else changes, the pattern is passed through.
  * - 1.30: bug DZEXP-134 makes FindFile ignore "$profile:", "$mission:", "$storage:", "$saves:" and list the server's
