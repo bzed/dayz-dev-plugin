@@ -32,7 +32,7 @@ once the Expansion build compiles clean without it. 1.29 stable keeps using the 
 Example 1.30 experimental start (mods in load order):
 
 ```
--mod=@CF;@DabsFramework;@DayZ-Expansion-Licensed-Experimental;@DayZ-Expansion-Bundle-Experimental;@YourMod \
+"-mod=@CF;@DabsFramework;@DayZ-Expansion-Licensed-Experimental;@DayZ-Expansion-Bundle-Experimental;@YourMod" \
   -profiles=profile -newErrorsAreWarnings=1
 ```
 

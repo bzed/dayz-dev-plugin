@@ -196,7 +196,7 @@ that copy from then on. So a seed file is ignored as soon as an active file exis
 
 ```sh
 mkdir -p "$TREE/profiles/battleye"
-rm -f "$TREE"/profiles/battleye/beserver_x64_active_*.cfg     # stale copy would keep the old port
+find "$TREE/profiles/battleye" -name 'beserver_x64_active_*.cfg' -delete   # stale copy would keep the old port
 printf 'RConPassword %s\nRestrictRCon 0\nRConPort %s\n' \
     "$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c10)" "$RCON" > "$TREE/profiles/battleye/beserver_x64.cfg"
 ```
@@ -229,7 +229,7 @@ into the way DayZ stores things, and the old storage then produces errors from C
 boot or when players load.
 
 ```sh
-rm -rf "$TREE/mpmissions/"*/storage_1     # persistence: players.db, data/, backup/, spawnpoints.bin
+find "$TREE/mpmissions" -maxdepth 2 -name storage_1 -exec rm -rf {} +   # persistence: players.db, data/, backup/, spawnpoints.bin
 ```
 
 - In a tree built by `make-server-tree.sh`, `storage_1` is a real directory inside the tree, so this never
