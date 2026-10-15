@@ -6,11 +6,11 @@
 |---|---|---|
 | `dayz-1.29` | DayZ 1.29 stable as it was | Frozen. Do not merge, push or edit it; it is the reference for how 1.29 looks. |
 | `dayz-1.30` | DayZ 1.30 and migrating to it | Branch for 1.30 work and the 1.29 -> 1.30 migration. |
-| `main` | The latest DayZ **experimental** release | Always tracks the newest experimental build; currently 1.30. |
+| `main` | The latest DayZ **stable** release | Tracks the current stable build; currently 1.30 (stable since Oct 15, 2026). |
 
 - Commit new work on `main` unless told otherwise; only touch `dayz-1.30` when asked.
 - Never push to `origin` (upstream DayZGhost); push to `bzed`.
-- When a new experimental build (e.g. 1.31) arrives, `main` moves to it. Ask before creating or renaming version branches.
+- When the next version (e.g. 1.31) reaches stable, `main` moves to it. Ask before creating or renaming version branches, and before documenting an experimental build on `main`.
 
 ## Content rules
 

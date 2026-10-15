@@ -1,6 +1,6 @@
 ---
 name: dayz-dev
-description: DayZ development and local DayZ server testing for DayZ 1.29 stable and 1.30 (experimental; stable Oct 15, 2026). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, one build for 1.29 and 1.30 (DAYZ_1_29 / DAYZ_1_30), FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer or experimental server, isolated server trees, free ports, headless boots, stable and experimental side by side, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's armake2 fork and nozwock's steam-workshop-uploader).
+description: DayZ development and local DayZ server testing for DayZ 1.30 (stable). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, porting mods to 1.30, FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer (or the experimental server for the next build), isolated server trees, free ports, headless boots, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's armake2 fork and nozwock's steam-workshop-uploader).
 allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-headless.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh:*)
 ---
 
@@ -8,8 +8,7 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 
 > **Dynamic documentation orchestrator** for DayZ mod development.
 > Supports vanilla Enforce Script, Community Framework (CF), and DayZ Expansion.
-> Target versions: **DayZ 1.29 (v1.29.163709, stable)** and **1.30 (v1.30.164014, experimental; stable release Oct 15, 2026)**.
-> Until 1.30 is stable, code must run on **both**. 1.28 notes kept for migration.
+> Target version: **DayZ 1.30 (stable since Oct 15, 2026; checked on v1.30.164014)**. 1.28 notes kept for migration.
 
 ## Philosophy
 
@@ -21,33 +20,30 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 
 ---
 
-## Two Releases at Once (1.29 stable + 1.30 experimental)
+## DayZ 1.30 essentials
 
-Every mod change has to keep working on 1.29 and be correct on 1.30. Read `compatibility/version-130.md`
-for any review, port or "does this still work" question. The essentials, all verified on real servers:
+1.30 is the stable release; no experimental branch is needed. Read `compatibility/version-130.md` for any review,
+port or "does this still work" question. The essentials, verified on a real 1.30.164014 server:
 
-- **The engine defines the version**: `DAYZ_1_29` on 1.29, `DAYZ_1_30` on 1.30 (only the current one).
-  Put the *old* code under `#ifdef DAYZ_1_29` and the new code in `#else`, so the new path stays the default
-  on 1.31+. The same PBO then loads on both. Prefer APIs that exist in both versions over `#ifdef`.
+- **The engine defines the version**: `DAYZ_1_30` on 1.30 (only the current one). 1.30 code needs no version `#ifdef`.
 - **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:` on 1.30** and silently searches the
-  server root instead. Replace every `FindFile` with `CF.FindFileEx` (CF 1.5.9+; it detects the bug and
+  server root instead (DZEXP-134, not fixed at release). Replace every `FindFile` with `CF.FindFileEx` (CF 1.5.9+; it detects the bug and
   calls `CF.ResolvePath`); without a CF dependency use the fallback `compatibility/YOURMOD_FindFilePath.c`. All other file
   functions still accept the placeholders.
-- **1.30 servers need the profile folder inside the server executable's folder** (symlink ok; `-profiles=profile`, not an
-  absolute path elsewhere) and **CF 1.5.9+** (the Workshop CF; no CF-Test/COT-Test needed any more); Expansion on 1.30 needs the `-experimental` Licensed + Bundle items, Dabs and CF, and `-newErrorsAreWarnings=1` (`frameworks/expansion.md`).
+- **Servers need the profile folder inside the server executable's folder** (symlink ok; `-profiles=profile`, not an
+  absolute path elsewhere) and **CF 1.5.9+** (the Workshop CF; no CF-Test/COT-Test); Expansion also needs Dabs Framework (`frameworks/expansion.md`).
   CF and our fallback helper both resolve `$profile:` relative to the server folder. See `compatibility/version-130.md` section 2.
-- **Paths use forward slashes.** Backslashes break `FindFile` on 1.30; forward slashes work everywhere on both.
+- **Paths use forward slashes.** Backslashes break `FindFile` on 1.30.
   This includes the `CfgMods` script module `files[]` in `config.cpp`: with backslashes a 1.30 server compiles none of
   the mod's scripts and reports no error.
-- **Compile breakers**: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
+- **Compile breakers** for mods written for 1.29 or older: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
   `Construction.SetParent(EntityAI)`, `CarScript.ToggleHeadlights()` removed (use `LightToggle()`).
 - **Silent breakers**: `OnCEUpdate()` overrides compile but are never called (use `OnCEIterate`);
   custom car `CreateFrontLight()` is never called (use `VehicleLightsComponent` profiles).
-- **Experimental is a diag build** (`DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL`): never use those defines as
+- **Experimental builds are diag builds** (`DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL`): never use those defines as
   "is 1.30", and expect `Error()`/`ErrorEx()` to show up as VM exceptions there.
-- Remote API references (diff.yadz.app, DayZ-Script-Diff) may still show 1.29. When a local copy of the
-  1.30 scripts exists (ask the user; e.g. a git with `1.29`/`1.30` tags), check signatures there, or use
-  `https://diff.yadz.app/v/experimental/`.
+- Remote API references (diff.yadz.app, DayZ-Script-Diff) may lag behind the release. When a local copy of the
+  1.30 scripts exists (ask the user; e.g. a git with a `1.30` tag), check signatures there.
 
 ---
 
@@ -123,9 +119,8 @@ if (player)
 | `config/server-config.md` | Server configuration files | Server setup |
 | `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
 | `testing/client-testing.md` | Run the DayZ client headless (sway), join a local server with mods, RPC-driven client+server tests, read client logs | Client-side behavior: UI, replication, RPCs, client script errors |
-| `compatibility/version-130.md` | 1.30 changes, dual 1.29/1.30 targeting, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths, experimental server |
+| `compatibility/version-130.md` | 1.30 changes, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths |
 | `compatibility/YOURMOD_FindFilePath.c` | Fallback FindFile path helper for mods without CF (CF mods use `CF.FindFileEx`) | Any code that calls `FindFile` |
-| `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current stable) |
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 | `scripting/api-lookup.md` | Where to verify classes/tokens, curl/jq/WebFetch recipes for diff.yadz.app, BI wiki, CF, Expansion | Any class/method/token you are not sure about |
 | `scripting/best-practices.md` | Enforce Script/memory/null-safety rules, mod folder tree, anti-patterns, modded class/RPC/net-sync snippets | Writing or reviewing code |
@@ -148,24 +143,23 @@ Match the request to a rule, read the file it names, fetch from the web only whe
 | Mod structure, folders, memory, actions, weapons, inventory, vehicles | the matching local file in the map above; `scripting/best-practices.md` for pitfalls |
 | Detecting vanilla vs CF vs Expansion (`requiredAddons`, `dependency[]`) | `frameworks/framework-detection.md` |
 
-### Version compatibility (1.30 / 1.29 / 1.28)
+### Version compatibility (1.30 / 1.28)
 
-**Triggers:** "1.30", "experimental", "DAYZ_1_29", "DAYZ_1_30", "works on both", `FindFile`, `$profile:`, `$mission:`, `$storage:`, backslash paths,
+**Triggers:** "1.30", "DAYZ_1_30", `FindFile`, `$profile:`, `$mission:`, `$storage:`, backslash paths,
 `OnCEUpdate`/`OnCEIterate`, `ProcessVariables`, `VehicleLightsComponent`, `CreateFrontLight`, `Construction`, `CombinationLock`, `GizmoApi`,
 `sealed`/`Obsolete`, "breaking change", "migration", "1.29", "1.28".
 
-**Action:** read `compatibility/version-130.md` for anything touching 1.30 and keep the result working on 1.29 (the `DAYZ_1_29`
-pattern there). For a mod review walk its checklist (§8) and report findings per item with file:line, then fix with
-dual-version code. `version-129.md` covers 1.28 → 1.29, `version-128.md` 1.27 → 1.28. For changes between two builds, diff the
+**Action:** read `compatibility/version-130.md` for anything touching 1.30. For a mod review walk its checklist (§8) and report
+findings per item with file:line, then fix. `version-128.md` covers 1.27 → 1.28. For changes between two builds, diff the
 DayZ-Script-Diff commits listed in https://diff.yadz.app/assets/versions.json.
 
 ### Testing a mod or a server
 
 **Triggers:** a mod change about to be called done, "test", "verify", "does it load", "start a local server", a `serverDZ.cfg`/mission/
-`cfggameplay.json` change, stable vs experimental, `DayZServer`, `-servermod`, `-mod=`, `.RPT`, "mod not loading", "server crashes" - with or without a mod.
+`cfggameplay.json` change, experimental, `DayZServer`, `-servermod`, `-mod=`, `.RPT`, "mod not loading", "server crashes" - with or without a mod.
 
 **Action:** read `testing/local-server.md`. Locate the server with `${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh` (app 223350; `-e` for
-Experimental, 1042420). While 1.30 is experimental, boot every change on **both**, one tree each; if one is missing ask the user to
+Experimental, 1042420, only when the user wants to test against the next build). If the server is missing ask the user to
 install it through Steam (no steamcmd unless asked). **Never copy, edit or write anything in the Steam directories**: run from a
 tree made by `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>` with mods symlinked in and passed as relative `-servermod=`/`-mod=`
 paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran before CF is added to it** (CF changes how data is stored; stale storage gives CF/Storage errors; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
@@ -178,7 +172,7 @@ the mod's `[AUTOTEST]` results; the example harness is `testing/autotest-mod/`. 
 makes outside the tree is a symlink to the test mod in the client's `steamapps/common/DayZ` (clients only load `@mod` folders from
 there); remove it afterwards. Never `steam -applaunch` for this: it opens the game on the user's desktop. **One game at a time** (servers:
 as many as needed): run `dayz-client-headless.sh status` first, never kill a game you did not start, and stop yours as soon as you
-have the logs/screenshots. Experimental has no Workshop: the mods come from stable (`-e` flag, `DayZ Exp` dir; see the Experimental
+have the logs/screenshots. The experimental client has no Workshop: the mods come from stable (`-e` flag, `DayZ Exp` dir; see the Experimental
 section of `testing/client-testing.md`).
 
 ### Packaging, signing, Workshop upload
@@ -207,4 +201,4 @@ Mod structure, PBO packaging, best practices, anti-patterns, memory management, 
 | UI/HUD design | Read `scripting/` files for Widget system |
 | Server administration | Read `config/server-config.md` |
 | Expansion modding | Read `frameworks/expansion.md` |
-| Version migration | Read `compatibility/version-130.md` (1.30 + dual targeting), `version-129.md`, `version-128.md` |
+| Version migration | Read `compatibility/version-130.md`, `version-128.md` |

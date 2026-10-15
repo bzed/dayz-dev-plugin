@@ -6,7 +6,7 @@ Turn a source tree into a Workshop-ready folder without DayZ Tools or Windows:
 `scripts/dayz-mod-pack.sh` wires the two together; this file explains what it does and what the other
 armake2 commands are for.
 
-Verified on Linux with the bzed armake2 fork (v0.3.0), DayZ Server 1.29.163709: a PBO built, signed and
+Verified on Linux with the bzed armake2 fork (v0.3.0), DayZ Server 1.29.163709 (not re-run on 1.30): a PBO built, signed and
 verified with this flow loads with `-mod=@Mod` and `verifySignatures = 2`, and its scripts run.
 The maintainer has since used the armake2 fork and the uploader end to end for real uploads ("working well").
 **Not verified here:** the v3-vs-v2 signature check on a real client.

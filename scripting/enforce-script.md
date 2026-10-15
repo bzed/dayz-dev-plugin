@@ -278,7 +278,7 @@ long JSON dump or a joined array looks as if the end never ran.
 | `*.RPT` | about 1023 chars total (about 998 of your text) | A cut message loses its line break, so the next RPT line is glued to it |
 | `ErrorEx(msg, ErrorExSeverity.INFO)` | 255 total, but its prefix is longer | The prefix (`  SCRIPT       : [::Func] :: [INFO] :: `) was 43 characters for a function named `LimitTest`, leaving about 212 for the text |
 
-Measured on a dedicated server, 1.29.163709. `Print(string)`, `PrintFormat` and `Print` of a very long
+Measured on a dedicated server, 1.29.163709 (not re-measured on 1.30). `Print(string)`, `PrintFormat` and `Print` of a very long
 string (5000 chars) cut identically. A message is not wrapped, so nothing is lost besides the tail.
 
 - Keep log messages under ~200 characters. Put the identifying part (mod tag, id, name) first, because the
@@ -335,11 +335,11 @@ void Process(notnull MyClass data) { /* data is guaranteed non-null */ }
 
 ## Key Singletons
 ```c
-GetGame()           // DayZGame (1.29: script wrapper that returns g_Game - prefer g_Game)
+GetGame()           // DayZGame (script wrapper that returns g_Game - prefer g_Game)
 GetDayZGame()       // DayZGame - DayZ-specific game
 GetPlayer()         // Man - local player (client only)
 GetRPCManager()     // CF RPCManager (requires Community Framework)
-g_Game              // DayZGame global - what vanilla uses everywhere since 1.29
+g_Game              // DayZGame global - what vanilla uses everywhere
 ```
 
 ## Performance Notes

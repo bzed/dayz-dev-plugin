@@ -11,11 +11,11 @@ enum InventoryLocationType
     HANDS,          // In player's hands
     PROXYCARGO,     // Cargo of a large object (building, ...)
     VEHICLE,        // Player in vehicle, seat index stored
-    TEMP            // 1.29+: client-side only, item held in limbo during inventory desync
+    TEMP            // client-side only, item held in limbo during inventory desync
 }
 ```
 Values are overwritten from C++ - always use the names. Code that `switch`es over the type should
-tolerate `TEMP` on 1.29+.
+tolerate `TEMP`.
 
 ## Creating Items
 
@@ -91,8 +91,7 @@ player.ServerTakeEntityToInventory(item);
 ### 1.30: name the target explicitly
 The `*TakeEntityToCargo`, `*TakeEntityAsAttachment(Ex)` and `*TakeEntityToCargoEx` calls (Predictive/Local/
 Server/Juncture on players, `GameInventory.TakeEntity*`) are `[Obsolete]` in 1.30 and moved from `Man` to
-`EntityAI`. The replacements take the target entity and **already exist in 1.29**, so switch now; they
-compile on both without `#ifdef` (tested):
+`EntityAI`. The replacements take the target entity (tested):
 ```c
 player.ServerTakeEntityToTargetCargo(targetEntity, item);                 // was ServerTakeEntityToCargo(item)
 player.PredictiveTakeEntityToTargetAttachment(targetEntity, item);        // was PredictiveTakeEntityAsAttachment(item)

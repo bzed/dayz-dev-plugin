@@ -68,7 +68,7 @@ MyMod/
 | Add `: ParentClass` to `modded class` | `modded class` already inherits - never add inheritance |
 | `delete obj;` | `obj = null;` (let GC handle cleanup) |
 | Trust client data in RPCs | Always validate server-side |
-| `GetGame()` | Use `g_Game` global (1.29: `GetGame()` is just a script wrapper around `g_Game`) |
+| `GetGame()` | Use `g_Game` global (`GetGame()` is just a script wrapper around `g_Game`) |
 | `SurfaceIsPond()` / `SurfaceIsSea()` | `g_Game.GetWaterDepth(pos) <= 0` (much faster) |
 | `GetObjectsAtPosition()` frequently | Cache results, use triggers, or keep your own registry of relevant objects |
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
@@ -78,9 +78,9 @@ MyMod/
 | `FindFile("$profile:...")` | `CF.FindFileEx("$profile:...", ...)` (or `FindFile(YOURMOD_FindFilePath(...))` without CF) - 1.30 ignores placeholders in `FindFile` |
 | Backslashes in paths (`"$profile:MyMod\\cfg.json"`) | Forward slashes (`"$profile:MyMod/cfg.json"`) - required for `FindFile` on 1.30 |
 | `g_Game.GetMissionFolderPath()` | Folder of `g_Game.GetMissionPath()` - the former is `""` on servers |
-| `override void OnCEUpdate()` | `OnCEIterate(float currentTime, float elapsedTime)` on 1.30 (`#ifdef DAYZ_1_29` for the old one) |
-| New-version code under `#ifdef DAYZ_1_30` | Old code under `#ifdef DAYZ_1_29`, new code in `#else` (stays on for 1.31+) |
-| `#ifdef BUILD_EXPERIMENTAL`/`DIAG_DEVELOPER` as "is 1.30" | `DAYZ_1_29`/`DAYZ_1_30` - the diag defines vanish on stable |
+| `override void OnCEUpdate()` | `OnCEIterate(float currentTime, float elapsedTime)` (1.30 never calls `OnCEUpdate`) |
+| Version `#ifdef DAYZ_1_30` around current code | No `#ifdef` needed; only the current engine version is defined, so `DAYZ_1_30` code vanishes on 1.31 |
+| `#ifdef BUILD_EXPERIMENTAL`/`DIAG_DEVELOPER` as "is 1.30" | `DAYZ_1_30` if you must - the diag defines vanish on stable |
 | Unqualified member names in modded classes | Prefix with mod name: `m_MyMod_VarName` |
 
 ---

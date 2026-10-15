@@ -1,7 +1,7 @@
 # DayZ Enforce Script Development Rules
 
 > For Gemini Code Assist and other Gemini-powered AI coding tools.
-> Target: DayZ 1.29 (v1.29.163709, stable) and 1.30 (v1.30.164014, experimental; stable Oct 15, 2026), 1.28 notes kept
+> Target: DayZ 1.30 (stable since Oct 15, 2026; checked on v1.30.164014), 1.28 notes kept
 
 ## Role
 
@@ -26,7 +26,6 @@ You are a **DayZ Enforce Script development expert**. You help with DayZ mod dev
 @config/types-xml.md
 @config/server-config.md
 @testing/local-server.md
-@compatibility/version-129.md
 @compatibility/version-128.md
 
 ## Language: Enforce Script
@@ -53,7 +52,7 @@ DayZ uses **Enforce Script**, a C-like language. Key differences from C/C#/C++:
 ### Verification Sources:
 | Type | Source |
 |------|--------|
-| Script API (latest, 1.29) | https://diff.yadz.app/ (machine-readable: `api.json`, see `agent.md`) |
+| Script API (latest) | https://diff.yadz.app/ (machine-readable: `api.json`, see `agent.md`) |
 | Script Diff (official) | https://github.com/BohemiaInteractive/DayZ-Script-Diff |
 | Enforce Syntax | https://community.bistudio.com/wiki/DayZ:Enforce_Script_Syntax |
 | Config tokens | https://community.bistudio.com/wiki/CfgVehicles_Config_Reference |
@@ -175,36 +174,22 @@ Check `config.cpp` for dependencies:
 | Add `: ParentClass` to `modded class` | `modded class` already inherits - never add inheritance |
 | `delete obj;` | `obj = null;` (let GC handle cleanup) |
 | Trust client data in RPCs | Always validate server-side |
-| `GetGame()` | Use `g_Game` global (1.29: `GetGame()` is just a wrapper) |
+| `GetGame()` | Use `g_Game` global (`GetGame()` is just a wrapper) |
 | `SurfaceIsPond()` / `SurfaceIsSea()` | `g_Game.GetWaterDepth(pos) <= 0` (much faster) |
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
 | Skip null checks on Cast<> | Always check before using result |
 
-## 1.30 Changes (experimental; stable Oct 15, 2026) - target 1.29 AND 1.30
-Verified on 1.29.163709 and 1.30.164014 experimental servers. Details: `compatibility/version-130.md`.
-1. **Version define**: engine defines `DAYZ_1_29` or `DAYZ_1_30` (only the current one). Old code under `#ifdef DAYZ_1_29`, new code in `#else`; one PBO loads on both
+## 1.30 Changes (stable)
+Verified on a 1.30.164014 server. Details: `compatibility/version-130.md`.
+1. **Version define**: the engine defines only the current version (`DAYZ_1_30`); no version `#ifdef` is needed for 1.30 code
 2. **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:`** on 1.30 (searches the server root instead) - use `CF.FindFileEx` (CF 1.5.9+; fallback without CF: `compatibility/YOURMOD_FindFilePath.c`); other file functions still accept placeholders
 3. **Forward slashes in all paths** - backslashes break `FindFile` on 1.30
 4. **`ProcessVariables()`** → `ProcessVariables(float elapsedTime)`; **`OnCEUpdate()` is never called** → `OnCEIterate(float currentTime, float elapsedTime)`
 5. **Car lights**: `CreateFrontLight/CreateRearLight` no longer called → register `VehicleLightProfile*` via `m_LightsComponent.RegisterLight`; `ToggleHeadlights()` removed → `LightToggle()`
-6. **Inventory**: `*TakeEntityToCargo`/`*TakeEntityAsAttachment` obsolete → `*TakeEntityToTarget*` (exists in 1.29: switch now)
+6. **Inventory**: `*TakeEntityToCargo`/`*TakeEntityAsAttachment` obsolete → `*TakeEntityToTarget*`
 7. **Construction** split into `ConstructionBase`; `SetParent(EntityAI)`; `CombinationLock` signatures changed
 8. **`ERPCs`** values shifted - never use raw ints
-9. Experimental is a diag build (`DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL`) - never use those as "is 1.30"
-
-## 1.29 Breaking Changes (Critical)
-
-1. **`GetGame()`** is now a script function `DayZGame GetGame() { return g_Game; }` - use `g_Game`
-2. **`ActiveState` enum reordered**: `INACTIVE=0, ACTIVE=1, ALWAYS_ACTIVE=2` (was `ACTIVE, INACTIVE, ...`) - never use raw ints
-3. **Vehicle headlights native**: `CarScript.m_HeadlightsOn` removed; use `Transport.LightIsOn/LightOn/LightOff/LightToggle`, override `OnBeforeLightOn()`
-4. **Sleeping physics bodies** no longer tick `EOnSimulate`/`EOnPostSimulate`
-5. **Junctures**: `AddActionJuncture`/`AddInventoryJuncture(Ex)` gained `Managed userData = null`
-6. **`InventoryLocationType.TEMP`** added (client-side desync limbo)
-7. **StaminaHandler** reworked (move/state reconciliation); `GetCooldownTimer` removed, `DepleteStamina`/`OnRPC` obsolete
-8. **Removed**: `DayZPlayerImplement.GetNVEntityAttached()` - use `GetCachedEquipment()`; `CGame.Gizmo*` obsolete - use `GetGizmoApi()`
-9. **Terrain**: WRP must be binarized with 1.29 tools
-
-Details: `compatibility/version-129.md`.
+9. Experimental builds are diag builds (`DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL`) - never use those as "is 1.30"
 
 ## 1.28 Breaking Changes (Critical)
 
@@ -245,7 +230,7 @@ EntityAI -> Building -> BuildingBase -> House (typedef BuildingSuper)
 
 | Singleton | Access | Description |
 |-----------|--------|-------------|
-| `g_Game` / `GetGame()` | 3_Game and up | Main game instance, `DayZGame` (1.29: `GetGame()` returns `DayZGame`) |
+| `g_Game` / `GetGame()` | 3_Game and up | Main game instance, `DayZGame` (`GetGame()` returns `DayZGame`) |
 | `GetDayZGame()` | Everywhere | DayZGame, extended game functions |
 | `GetMission()` | 5_Mission | Current MissionBase |
 | `GetCEApi()` | Server | Central Economy API |
@@ -255,7 +240,7 @@ EntityAI -> Building -> BuildingBase -> House (typedef BuildingSuper)
 
 | Source | URL | Coverage |
 |--------|-----|----------|
-| DIFF (DayZ Scripts API) | https://diff.yadz.app/ | Script API of the latest build (1.29), per-build changelog |
+| DIFF (DayZ Scripts API) | https://diff.yadz.app/ | Script API of the latest build, per-build changelog |
 | DayZ Script Diff | https://github.com/BohemiaInteractive/DayZ-Script-Diff | Official source code changes |
 | BI Community Wiki | https://community.bistudio.com/wiki/DayZ:Enforce_Script_Syntax | Language reference |
 | DayZ Explorer | https://dayzexplorer.zeroy.com/ | Enforce essentials, Math, FileIO |

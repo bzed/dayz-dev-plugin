@@ -1,7 +1,7 @@
 # DayZ Class Hierarchy
 
 ## Core Entity Chain
-Verified against DayZ 1.29 scripts (`Pawn`/`Person` are in the chain because retail defines
+Verified against DayZ 1.29 scripts (not re-verified for 1.30) (`Pawn`/`Person` are in the chain because retail defines
 `FEATURE_NETWORK_RECONCILIATION`).
 ```
 Managed
@@ -45,10 +45,10 @@ Managed
                                 └── BuildingWithFireplace
 ```
 
-### Per-class type objects (1.29)
+### Per-class type objects
 Every config class has a shared `EntityType` instance (`Object.GetEntityType()`), e.g.
 `EntityType -> EntityAIType -> InventoryItemType -> ItemBaseType -> WeaponType / ClothingType / ...`,
-plus `ManType`, `TransportType`, `BuildingType`, `DayZCreatureType`. See `compatibility/version-129.md`.
+plus `ManType`, `TransportType`, `BuildingType`, `DayZCreatureType`.
 
 ## Key IEntity Methods (20+)
 ```c
@@ -96,7 +96,7 @@ bool IsUnconscious();
 
 // Inventory
 ItemBase GetItemInHands();           // PlayerBase helper
-EntityAI GetEntityInHands();         // native on Man (1.29+)
+EntityAI GetEntityInHands();         // native on Man
 GameInventory GetInventory();
 EntityAI GetInventory().CreateInInventory(string className);
 void PredictiveTakeEntityToHands(EntityAI item);
@@ -174,7 +174,7 @@ enum InventoryLocationType
     HANDS,          // in player hands
     PROXYCARGO,     // cargo of a large object (building, ...)
     VEHICLE,        // player in vehicle (seat index stored)
-    TEMP            // 1.29+: client-side limbo during inventory desync
+    TEMP            // client-side limbo during inventory desync
 }
 
 // Key GameInventory methods
@@ -183,7 +183,7 @@ bool CanAddEntityInCargo(EntityAI e, bool flip);
 bool CanAddAttachment(EntityAI item);
 EntityAI CreateEntityInCargo(string type);
 EntityAI CreateAttachment(string type);
-bool TakeEntityToCargo(InventoryMode mode, EntityAI item);   // [Obsolete] 1.30: TakeEntityToTargetCargo(mode, target, item), exists in 1.29
+bool TakeEntityToCargo(InventoryMode mode, EntityAI item);   // [Obsolete] 1.30: TakeEntityToTargetCargo(mode, target, item)
 bool TakeEntityToInventory(InventoryMode mode, FindInventoryLocationType flags, EntityAI item);
 bool FindFreeLocationFor(EntityAI item, FindInventoryLocationType flags, out InventoryLocation loc);
 int CountInventory();                // number of items in this inventory
@@ -192,7 +192,7 @@ int CountInventory();                // number of items in this inventory
 ## Key Singletons
 ```c
 // Game
-DayZGame g_Game             // preferred; GetGame() is a wrapper returning it (1.29)
+DayZGame g_Game             // preferred; GetGame() is a wrapper returning it
 DayZGame GetDayZGame()
 
 // Player (client only)

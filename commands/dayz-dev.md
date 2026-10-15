@@ -1,5 +1,5 @@
 ---
-description: "DayZ development helper - script API, config references, mod docs, 1.29/1.30 porting, local server testing"
+description: "DayZ development helper - script API, config references, mod docs, 1.30 porting, local server testing"
 argument-hint: "<query>"
 allowed-tools: [Read, Glob, Grep, WebFetch, WebSearch]
 ---
@@ -27,7 +27,7 @@ You are a DayZ Enforce Script development expert. Help the user with their DayZ 
    - `systems/` - Mod structure, networking, inventory, actions, weapons, vehicles
    - `frameworks/` - Framework detection, CF, Expansion
    - `config/` - config.cpp, types.xml, server config
-   - `compatibility/` - Version 1.30 (experimental, stable Oct 15, 2026; dual 1.29/1.30 targeting, CF.FindFileEx / FindFile helper), 1.29 (current stable) and 1.28 changes and migration
+   - `compatibility/` - Version 1.30 (current stable; CF.FindFileEx / FindFile helper) and 1.28 changes and migration
 
 3. **Fetch current documentation** using WebFetch if needed
 
@@ -50,4 +50,4 @@ If the user has a DayZ mod project open, check `config.cpp` for dependencies:
 2. **NEVER invent class names or methods** - Verify against documentation
 3. **ALWAYS null-check** Cast<>, GetInventory(), GetIdentity(), GetPlayer()
 4. **ALWAYS check server/client context** - Use GetGame().IsServer() or !GetGame().IsDedicatedServer()
-5. **Use `g_Game` instead of `GetGame()`** (1.29: `GetGame()` is only a script wrapper returning `g_Game`)
+5. **Use `g_Game` instead of `GetGame()`** (`GetGame()` is only a script wrapper returning `g_Game`)

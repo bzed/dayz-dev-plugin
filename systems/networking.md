@@ -153,8 +153,8 @@ RegisterNetSyncVariableInt("m_VarName", min, max);           // int with range
 RegisterNetSyncVariableBool("m_VarName");                     // bool
 RegisterNetSyncVariableFloat("m_VarName", min, max, precision); // float with precision
 ```
-> Before 1.29.163451, quantized floats whose range + precision needed more than 32 bits were synced
-> incorrectly (T198078). Keep range/precision reasonable if you must support older servers.
+> Quantized floats whose range + precision need more than 32 bits were synced incorrectly before
+> 1.29.163451 (T198078). Keep range/precision reasonable if you must support older servers.
 
 ### Complete Example
 ```c

@@ -5,8 +5,8 @@ build do not show that the scripts compile, that a `modded class` or `override` 
 even that the engine loaded the scripts at all. A local dedicated server answers all three in
 under a minute, with no client and no players.
 
-Everything below was verified with the native Linux `DayZServer` binary of DayZ 1.29, and the
-experimental 1.30 server (section 1b). The
+Everything below was verified with the native Linux `DayZServer` binary of DayZ 1.29 and the
+1.30.164014 pre-release server (section 1b); the 1.30 release build was not re-run. The
 Windows server (`DayZServer_x64.exe`) takes the same parameters; its lookup is described at the end.
 
 ## 1. Use the server the Steam client already installed
@@ -65,10 +65,11 @@ user:
 
 After they confirm, run the script again. Continue only once it exits 0 with `StateFlags` 4.
 
-## 1b. Stable and experimental: test on both
+## 1b. Experimental (optional)
 
-While a new version is on Experimental (1.30 until its stable release on Oct 15, 2026), a mod has to
-load on the stable server *and* the experimental one. Steam installs them as separate apps:
+1.30 is the stable release, so the stable server (app 223350) is the default and needs nothing else. The
+Experimental branch carries the next build; use it only to test a mod ahead of that release. Steam installs it
+as separate apps:
 
 | | Server | Client | Workshop items |
 |---|---|---|---|
@@ -78,20 +79,19 @@ load on the stable server *and* the experimental one. Steam installs them as sep
 ```sh
 "${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e -v    # experimental server
 "${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e -w    # experimental client's workshop dir
-TREE29=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test-129)
-TREE30=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test-130 "$("${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e)")
+TREE=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test)
+TREE_EXP=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test-exp "$("${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e)")
 ```
 
-- One tree per version. They may run at the same time (separate trees, separate random ports), and the
-  same mod build can be symlinked into both. One PBO serves both versions when version-specific code is
-  behind `#ifdef DAYZ_1_29` (see `compatibility/version-130.md`).
+- One tree per server. They may run at the same time (separate trees, separate random ports), and the
+  same mod build can be symlinked into both.
 - The experimental install dir contains a space (`DayZ Server Exp`): always quote it.
 - Experimental is a diag build (`DEVELOPER`, `DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL` in the defines line).
   More vanilla diag code runs, `Error()`/`ErrorEx()` print as `Virtual Machine Exception`, and some
   `SCRIPT (E)` lines (e.g. `Leaked 'BunkerBroadcastManager'`) are vanilla noise: compare with a vanilla run.
-- The engine version is in the `defines:` part of the `Module: ...` log lines (`DAYZ_1_29` / `DAYZ_1_30`)
-  and at the top of the RPT (`Version 1.30.164014.27`).
-- On 1.30 experimental, a script compile error was followed by a **segfault** of the server. A crash right
+- The engine version is in the `defines:` part of the `Module: ...` log lines (`DAYZ_1_30`)
+  and at the top of the RPT (`Version 1.30.164014.27` on the pre-release).
+- On the 1.30 pre-release, a script compile error was followed by a **segfault** of the server. A crash right
   after boot usually means: read `script_*.log` for `Can't compile`.
 
 ## 2. Never write into the Steam install: build your own server tree
@@ -240,7 +240,7 @@ find "$TREE/mpmissions" -maxdepth 2 -name storage_1 -exec rm -rf {} +   # persis
 - Take it as the default for any test tree whose mod set just gained CF, also when the tree is "only" a
   copy of an earlier one.
 
-**Not reproduced here.** An attempt to produce the error on DayZ 1.29.163709 did not show it: a tree run
+**Not reproduced here.** An attempt to produce the error on DayZ 1.29.163709 (not retried on 1.30) did not show it: a tree run
 vanilla (storage 3.3 MB), then with a real player saved by a vanilla client (6.5 MB), then booted with
 the installed CF (Workshop 1559212036) and the same player reconnecting with CF on the client. The server's
 script log and RPT and the client's script log stayed clean. Mods that persist their own item,
@@ -296,14 +296,14 @@ grep -h 'MyMod' "$TREE"/profiles/script_*.log                # your own Print() 
 bug in your code. Details and a chunking helper: `scripting/enforce-script.md`, Logging.
 
 1. **Did the scripts load at all?** First run the same command without `-servermod` to get the
-   vanilla baseline: 416 Game-module files on 1.29.163709, 440 on 1.30.164014 experimental. With the mod, the count must be higher, by the
+   vanilla baseline: 440 Game-module files on 1.30.164014 (416 on 1.29.163709). With the mod, the count must be higher, by the
    number of script files in that module. **An unchanged count means the mod's scripts were not
    loaded**, even though the server started fine and printed no error.
 
    Common silent causes:
    - an absolute mod path;
    - on 1.30: backslashes in the `CfgMods` script module paths (`files[] = {"MyMod\scripts\4_World"}`). 1.29
-     loads them; 1.30 ignores them without an error. Use forward slashes (`compatibility/version-130.md` section 2);
+     loaded them; 1.30 ignores them without an error. Use forward slashes (`compatibility/version-130.md` section 2);
    - a PBO without the prefix header that `config.cpp`'s script paths expect. Packing with
      dayz-dev-tools needs `pbo -H prefix=<prefix> ...`; AddonBuilder uses `-prefix=`. Without it,
      the defines from `CfgMods` show up in the log, but no scripts do;

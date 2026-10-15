@@ -87,8 +87,8 @@ bool HasExpansion()
 
 ## Version Requirements
 
-For DayZ 1.29 use the current CF / Expansion releases (no verified minimum versions are recorded here yet);
-check the Workshop / GitHub changelogs for 1.29 support.
+For DayZ 1.30 use CF 1.5.9+ and the current Expansion release (see `frameworks/community-framework.md`,
+`frameworks/expansion.md`); check the Workshop / GitHub changelogs for newer minimums.
 
 ### DayZ 1.28
 

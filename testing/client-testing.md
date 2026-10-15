@@ -7,7 +7,7 @@ report test results by itself.
 
 Everything marked **(tested)** was run on Linux with the stable client and server 1.29.163709
 (Steam client app 221100) and, unless a line says otherwise, the same way on the experimental client and
-server 1.30.164014.27 (app 1024020, see "Experimental"). Both with GE-Proton11-1, an AMD GPU through
+server 1.30.164014.27 (app 1024020, see "Experimental"). Not re-run on the 1.30 release build. Both with GE-Proton11-1, an AMD GPU through
 Vulkan/RADV and sway 1.12.
 
 ## What you need
@@ -94,7 +94,7 @@ the Steam install directory (a symlink only); remove it when the test mod is no 
 - **BattlEye.** The client started this way does not start BattlEye, so set `BattlEye = 0;` in the tree's
   `serverDZ.cfg`. **(tested)**
 
-## Experimental (1.30)
+## Experimental (optional, next build)
 
 Experimental is separate in every path, and has **no Workshop of its own**: you cannot subscribe to or
 download mods through it. The mods come from stable.
@@ -107,7 +107,7 @@ download mods through it. The mods come from stable.
 | Client logs | `.../AppData/Local/DayZ/` | `.../AppData/Local/DayZ Exp/` (note the space) |
 | Script log line | `  SCRIPT       : text` | `21:21:01.843  SCRIPT       : text` (timestamp prefix) |
 
-How to run an experimental test **(tested, 1.30.164014.27)**:
+How to run an experimental test **(tested on the 1.30.164014.27 pre-release)**:
 
 1. **Get the mods through stable.** Subscribe in the Steam Workshop and let the *stable* DayZ client download
    them. They land in `steamapps/workshop/content/221100/<id>`. On the verification machine
@@ -126,8 +126,8 @@ How to run an experimental test **(tested, 1.30.164014.27)**:
 
 What the experimental run showed **(tested)**: the same `AutoTest` PBO, built once, passed unchanged on
 1.30.164014.27 (`DAYZ_1_30` define active) together with the stable Workshop's CF, with `DONE passed=2
-failed=0` and no `NULL pointer` or crash log on the client. Test every change on both while 1.30 is on experimental (`SKILL.md`, dual targeting).
-Mods that are not written for 1.30 can still fail on it; that is exactly what this run is for.
+failed=0` and no `NULL pointer` or crash log on the client. An experimental run is optional now that 1.30 is stable;
+use it to catch breakage before the next release.
 
 ## 3. Tests that run on both sides and report back
 

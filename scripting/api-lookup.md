@@ -6,7 +6,7 @@ whenever you are not 100% sure a class, method or token exists (see the No Hallu
 ## Verification Sources
 | Type | Source | Action |
 |------|--------|--------|
-| Script API (latest stable, 1.29; `/v/experimental/` for 1.30) | https://diff.yadz.app/ | `api.json` via Bash/jq, or WebFetch `classes/<Name>/` |
+| Script API (latest build; `/v/experimental/` for the experimental build) | https://diff.yadz.app/ | `api.json` via Bash/jq, or WebFetch `classes/<Name>/` |
 | Build diff / changelog | https://diff.yadz.app/changelog/ | API diff between any two builds (JS page - use Script Diff git for exact diffs) |
 | Deprecated APIs | https://diff.yadz.app/deprecated/ | Everything marked `[Obsolete]` |
 | Script Diff (official) | https://github.com/BohemiaInteractive/DayZ-Script-Diff | Check exact source code |
@@ -33,11 +33,11 @@ whenever you are not 100% sure a class, method or token exists (see the No Hallu
 | Script diff between versions | **FETCH from DayZ-Script-Diff repo** |
 | Server configuration | **FETCH from DZconfig wiki** |
 | Mod structure, best practices | **READ local files** |
-| 1.28 / 1.29 / 1.30 compatibility/changes | **READ local compatibility files** |
+| 1.28 / 1.30 compatibility/changes | **READ local compatibility files** |
 
 ### Step 2: WebFetch URLs
 
-#### Script API Reference (DIFF, latest PC stable - 1.29)
+#### Script API Reference (DIFF, latest PC stable)
 **Base URL:** `https://diff.yadz.app/` (formerly `dayz-scripts.yadz.app`, which now redirects; the old
 Doxygen paths like `/d5/d78/group___enforce` are gone)
 

@@ -1,6 +1,6 @@
 {
   "name": "dayz-dev",
-  "description": "DayZ development and local server testing: Enforce Script, Community Framework and Expansion mods for DayZ 1.29 stable and 1.30 (dual-version targeting, 1.30 migration review), plus starting and testing local stable/experimental dedicated servers with or without mods.",
+  "description": "DayZ development and local server testing: Enforce Script, Community Framework and Expansion mods for DayZ 1.30 (stable; 1.30 migration review), plus starting and testing local dedicated servers with or without mods.",
   "author": {
     "name": "Chaos",
     "email": ""

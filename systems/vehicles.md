@@ -233,15 +233,15 @@ modded class CarScript
 }
 ```
 
-## 1.30 Vehicle Changes (CRITICAL; experimental, stable Oct 15, 2026)
+## 1.30 Vehicle Changes (CRITICAL)
 
-Full list and tested dual-version code: `compatibility/version-130.md`.
+Full list and tested code: `compatibility/version-130.md`.
 - **Custom light classes are ignored.** `CreateFrontLight()`/`CreateRearLight()` are obsolete and never
   called. `CarScript` builds a `VehicleLightsComponent` (`m_LightsComponent`); every car registers profiles in
   its constructor: `m_LightsComponent.RegisterLight("Front", new VehicleLightData(new MyCarLightProfileFront()))`
   (`VehicleLightProfileFront` / `VehicleLightProfileBrakeAndReverse` subclasses), plus `RegisterSelection(...)`
-  for selection materials. Keep `CreateFrontLight` under `#ifdef DAYZ_1_29` for 1.29.
-- `CarScript.ToggleHeadlights()` removed → `LightToggle()` (works on 1.29 too). Light helper methods
+  for selection materials.
+- `CarScript.ToggleHeadlights()` removed → `LightToggle()`. Light helper methods
   (`BrakesRearLight`, `TailLightsShineOn`, ...) and `IsVitalCarBattery/IsVitalTruckBattery` are obsolete →
   `Transport.NeedElectricitySourceDevice()`.
 - About 20 `CarScript` methods moved up to `Transport` (sounds, `EEHitBy`, `OnContact`, `IsVitalFuelTank`,
@@ -252,16 +252,16 @@ Full list and tested dual-version code: `compatibility/version-130.md`.
 - Fluids: `Transport.FillScript/GetFluidCapacityScript/GetFluidFractionScript(ETransportFluid, ...)`.
 - `cfggameplay.json`: `canDetachAttachedCarWheels`, `canDamageAttachedCarWheels`, `...BikeWheels`.
 
-## 1.29 Vehicle Changes (CRITICAL)
+## Native headlights and Transport API
 
-### Headlights are native now
+### Headlights are native
 `m_HeadlightsOn` was removed from `CarScript`; `m_HeadlightsState` and `m_RearLightType` are `int` now.
 Light state lives on `Transport` (cars and boats):
 ```c
 car.LightIsOn();     // replaces reading m_HeadlightsOn / IsScriptedLightsOn()
 car.LightOn();
 car.LightOff();
-car.LightToggle();   // what ToggleHeadlights() called; ToggleHeadlights() is removed in 1.30
+car.LightToggle();   // what ToggleHeadlights() called; ToggleHeadlights() is removed
 
 modded class CarScript
 {
@@ -281,7 +281,7 @@ modded class CarScript
 }
 ```
 
-### Other 1.29 changes
+### Other Transport/CarScript API
 - New `CarScript.OnInput(float dt)` (input handling split out of `OnUpdate`)
 - `Transport` gained deterministic physics helpers: `ApplyForce`, `ApplyForceAt`, `ApplyTorque`,
   `ApplyCentralImpulse`, `ApplyTorqueImpulse`, `ApplyImpulseAt`
@@ -292,7 +292,6 @@ modded class CarScript
 - `CarWheel.GetRuinedReplacement()` added
 - Fixed: players sent to random coordinates when exiting vehicles with improper geometry
 
-See `compatibility/version-129.md` for details.
 
 ## 1.28 Vehicle Changes (CRITICAL)
 
