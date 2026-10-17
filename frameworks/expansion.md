@@ -21,13 +21,13 @@ first error followed by hundreds of cascade errors. Fix the first one.
 A 1.30 server needs:
 
 - The regular **Licensed** and **Bundle** items (the `-experimental` variants were only for the 1.30 pre-release).
-- **Dabs Framework** that compiles on 1.30 (see the table below; the Workshop build did not on the pre-release).
+- The regular **Dabs Framework** Workshop build, unpatched (reported by the user: Expansion and Dabs work as published on 1.30;
+  not tested here). The Workshop Dabs build did not compile on the 1.30 pre-release, which is why older notes mention a patched fork.
 - The profile folder inside the server executable's folder (a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134).
-- `-newErrorsAreWarnings=1` was required on the pre-release (reported by the user, not tested here; it turns the new 1.30 script
-  compile errors into warnings so Expansion still loads). Drop it once the Expansion build compiles clean without it.
+- No `-newErrorsAreWarnings=1` and no script patches for Expansion or Dabs: both were pre-release workarounds only.
 
-Not re-checked here against the 1.30 release build: the Workshop Licensed/Bundle ids and whether Expansion and Dabs
-compile clean on it. Boot it and read `script_*.log` before relying on the table. Details:
+Not re-checked here against the 1.30 release build: the Workshop Licensed/Bundle ids. Boot it and read `script_*.log` before
+relying on the table. Details:
 `frameworks/community-framework.md`, `compatibility/version-130.md` section 2.
 
 Example start (mods in load order):
@@ -44,7 +44,7 @@ Load these, **in this order** (Workshop ids; `-mod=` / symlinked `@` folders):
 | # | Mod | Workshop id |
 |---|-----|-------------|
 | 1 | Community Framework (1.5.9+) | 1559212036 |
-| 2 | **Dabs Framework** (required) | 2545327648 (Workshop build; needs the 1.30 fix, see below) |
+| 2 | **Dabs Framework** (required) | 2545327648 (Workshop build, unpatched on 1.30) |
 | 3 | DayZ-Expansion-Licensed (required) | 2116157322 (the pre-release used 2178159769, Licensed-Experimental) |
 | 4 | DayZ-Expansion-Bundle (all modules, incl. Navigation, Vehicles, Garage) | 2572331007 (the pre-release used 2540096189, Bundle-Experimental) |
 | 5 | your mod (last) | |
@@ -53,14 +53,11 @@ All keys come with the mods (`keys/*.bikey`).
 
 - **Without Dabs** the Game module fails with `Undefined function 'Math.Exp'` (Dabs defines `Math.Exp`),
   followed by hundreds of `Bad type 'JsonFileLoader'` / `'array'` cascade errors. Fix the first error, not the cascade. (tested)
-- **Dabs on 1.30:** the Workshop build (2545327648) did not compile on the 1.30 pre-release
-  (`DabsFramework/.../MVC/Types/Types.c(52): Syntax error`, missing `;` after the `RelayCommandHashMap` typedef).
-  The fix is in the fork branch `fix/1.30-compat-staging` (checkout `DayZ-Dabs-Framework`): build its `DabsFramework/Scripts` with
-  armake2 (`$PBOPREFIX$` = `DabsFramework\Scripts`), sign it, and use the Workshop `GUI.pbo` unchanged. Then Game/World/Mission compile on 1.30. (tested)
-- Expansion 1.9.76 (Experimental items) booted on the 1.30.164014 pre-release with the Dabs fix.
-  On that diag build the Expansion AI NPC classes (`ExpansionQuestNPCAI*`, `ExpansionP2PTraderAI*`) throw
-  `Index out of bounds` VM exceptions in the hundreds: Expansion's own, unrelated to your mod. (tested)
-- `-newErrorsAreWarnings=1` on 1.30: see "On DayZ 1.30 (stable)" above (reported by the user, not tested here).
+- **Pre-release only (1.30.164014):** the Workshop Dabs build (2545327648) failed with
+  `DabsFramework/.../MVC/Types/Types.c(52): Syntax error` and needed a patched fork (`fix/1.30-compat-staging`); Expansion 1.9.76
+  (Experimental items) booted with that fix. On the stable 1.30 release neither patch is needed.
+  On that diag build the Expansion AI NPC classes (`ExpansionQuestNPCAI*`, `ExpansionP2PTraderAI*`) threw
+  `Index out of bounds` VM exceptions in the hundreds: Expansion's own, unrelated to your mod. (tested on the pre-release)
 - Navigation/Vehicles are detected with `#ifdef EXPANSIONMODNAVIGATION` / `EXPANSIONMODVEHICLE` (defined by the Expansion preload
   scripts, so they work whatever the mod order).
 - `modded class` must live in the **same script module as the class it modifies**: `Transport` is a `3_Game` class, so
