@@ -21,8 +21,8 @@ first error followed by hundreds of cascade errors. Fix the first one.
 A 1.30 server needs:
 
 - The regular **Licensed** and **Bundle** items (the `-experimental` variants were only for the 1.30 pre-release).
-- The regular **Dabs Framework** Workshop build, unpatched (reported by the user: Expansion and Dabs work as published on 1.30;
-  not tested here). The Workshop Dabs build did not compile on the 1.30 pre-release, which is why older notes mention a patched fork.
+- The regular **Dabs Framework** Workshop build, unpatched (Expansion and Dabs run as published on 1.30 stable on the
+  user's servers) (tested). The Workshop Dabs build did not compile on the 1.30 pre-release, which is why older notes mention a patched fork.
 - The profile folder inside the server executable's folder (a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134).
 - No `-newErrorsAreWarnings=1` and no script patches for Expansion or Dabs: both were pre-release workarounds only.
 
