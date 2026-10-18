@@ -19,7 +19,7 @@ dayz-api.py chain PlayerBase              # PlayerBase > ManBase > DayZPlayerImp
 Format: `CLASS Name<T> : Base @layers` (1=1_Core .. 5=5_Mission, layers that declare it; the index stores the declaring files, shown by `src`), then members as
 `[static|protected|native] ret Name(params) #doc` or `type field`. Overrides are collapsed into one
 `override: A B C` line (the signature is in the base class). `native` = engine-implemented (`proto native`).
-A `#base differs under #ifdef: A or B` line means the base class depends on a define (for example `Transport` is `Pawn` or `EntityAI`); the site's `bases[].cond` names the define. Output is capped at 120 lines (`--max N`). The index covers vanilla only, not CF/Expansion/mods, and not method bodies
+A `#base is A on a stable server, B when ... is off` line means the base class depends on a define; the index shows the base the stable dedicated server uses (`Transport` is `Pawn`, `Man` is `Person`, both under `FEATURE_NETWORK_RECONCILIATION`). **(tested)** 2026-10-18: the vanilla stable Linux dedicated server (Steam buildid 25460313) lists `FEATURE_NETWORK_RECONCILIATION` in the `defines:` of its script log, so the `Pawn`/`Person` branch is live; the define lives in the engine binary, not in any script or config. Output is capped at 120 lines (`--max N`). The index covers vanilla only, not CF/Expansion/mods, and not method bodies
 (for behavior use DayZ-Script-Diff below). Regenerate after a new build:
 `python3 scripts/build-api-index.py <dayz-sources>/scripts api --build "<ver> build <n>"`.
 

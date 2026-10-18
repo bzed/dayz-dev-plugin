@@ -15,6 +15,18 @@ MODS = {'static', 'override', 'proto', 'native', 'private', 'protected', 'event'
 DROP = {'autoptr', 'ref', 'owned', 'external', 'volatile', 'local', 'reference', 'event'}
 LAYERS = {'1_Core': '1', '2_GameLib': '2', '3_Game': '3', '4_World': '4', '5_Mission': '5'}
 DOC_MAX = 90
+# Defines of a stable dedicated server (script log "Module: ... defines:"), used to pick the active base of
+# classes declared as `#ifdef X class A extends B #else class A extends C #endif`.
+ACTIVE = {'DAYZ_1_30', 'SERVER', 'PLATFORM_LINUX', 'RELEASE', 'FEATURE_CURSOR',
+          'FEATURE_NETWORK_RECONCILIATION', 'FEATURE_NETWORK_RECONCILATION'}
+LAYERS = {'1_Core': '1', '2_GameLib': '2', '3_Game': '3', '4_World': '4', '5_Mission': '5'}
+DOC_MAX = 90
+# Defines of a stable dedicated server (script log "Module: ... defines:"), used to pick the active base of
+# classes declared as `#ifdef X class A extends B #else class A extends C #endif`.
+ACTIVE = {'DAYZ_1_30', 'SERVER', 'PLATFORM_LINUX', 'RELEASE', 'FEATURE_CURSOR',
+          'FEATURE_NETWORK_RECONCILIATION', 'FEATURE_NETWORK_RECONCILATION'}
+VARIANT = re.compile(r'#if(n?)def\s+(\w+)\s*\r?\n(?:\s*//[^\n]*\n)*\s*(?:modded\s+)?class\s+(\w+)\s*(?:extends|:)\s*([\w.]+)\s*\r?\n'
+                     r'#else\s*\r?\n\s*(?:modded\s+)?class\s+\3\s*(?:extends|:)\s*([\w.]+)\s*\r?\n#endif')
 
 
 def scan(src):
@@ -171,8 +183,35 @@ def member(h, doc, obs):
 HDR = re.compile(r'^(?:(modded|sealed|abstract)\s+)*(class|enum|struct)\s+(\w+)\s*(<[^>]*>)?\s*(?:(?:extends|:)\s*([\w.]+(?:<[^>]*>)?))?\s*$')
 
 
+def class_variants(raw):
+    """{class: (active base, other base)} for classes declared with different bases under #ifdef/#else."""
+    stack, seen = [], {}
+    for line in raw.splitlines():
+        t = line.strip()
+        m = re.match(r'#if(n?)def\s+(\w+)', t)
+        if m:
+            stack.append([(m.group(2) in ACTIVE) != bool(m.group(1)), True]); continue
+        if t.startswith('#else') and stack:
+            stack[-1][1] = False; continue
+        if t.startswith('#endif') and stack:
+            stack.pop(); continue
+        m = re.match(r'(?:modded\s+)?class\s+(\w+)\s*(?:extends|:)\s*([\w.]+)', t)
+        if m and stack:
+            active = all(c if first else not c for c, first in stack)
+            seen.setdefault(m.group(1), []).append((m.group(2), active))
+    out = {}
+    for cls, v in seen.items():
+        act = [b for b, a in v if a]
+        oth = [b for b, a in v if not a and b not in act]
+        if act and oth:
+            out[cls] = (act[0], oth[0])
+    return out
+
+
 def parse_file(path, layer, rel, classes, enums, globs):
-    text = scan(open(path, encoding='utf-8', errors='replace').read())
+    raw = open(path, encoding='utf-8', errors='replace').read()
+    variants = class_variants(raw)
+    text = scan(raw)
     for h, body in split(text):
         hc, doc, obs = clean(h)
         alt = []
@@ -185,6 +224,9 @@ def parse_file(path, layer, rel, classes, enums, globs):
             modded = 'modded' in hc.split(' class')[0].split(' enum')[0].split()
             tparams = re.sub(r'\s*Class\s+|\s*typename\s+', '', (m.group(4) or '')[1:-1]).replace(' ', '')
             base = m.group(5)
+            if name in variants:
+                base, other = variants[name]
+                alt = [other]
             if kind == 'enum':
                 e = enums.setdefault(name, {'base': base, 'items': [], 'files': []})
                 e['files'].append(rel)
@@ -269,7 +311,7 @@ def main():
         h = 'CLASS ' + name + (('<' + c['tp'] + '>') if c['tp'] else '') + (' : ' + short(c['base']) if c['base'] else '') + ' @' + ' @'.join(files)
         lines.append(h)
         if c.get('alt'):
-            lines.append(' #base differs under #ifdef: ' + ' or '.join(c['alt'] + [short(c['base'])]))
+            lines.append(' #base is ' + short(c['base']) + ' on a stable server, ' + ' or '.join(c['alt']) + ' when its #ifdef define (e.g. FEATURE_NETWORK_RECONCILIATION) is off')
         if c['doc']:
             lines.append(' #' + c['doc'])
         ovr = []
