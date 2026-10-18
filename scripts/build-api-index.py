@@ -175,7 +175,10 @@ def parse_file(path, layer, rel, classes, enums, globs):
     text = scan(open(path, encoding='utf-8', errors='replace').read())
     for h, body in split(text):
         hc, doc, obs = clean(h)
-        hc = re.sub(r'^.*\b((?:modded\s+)?class\s+\w+)', r'\1', hc) if hc.count('class ') > 1 else hc   # #ifdef/#else header variants: keep the last
+        alt = []
+        if hc.count('class ') > 1:   # #ifdef/#else header variants: keep the last, remember the other bases
+            alt = re.findall(r'class\s+\w+\s*(?:extends|:)\s*([\w.]+)', hc)[:-1]
+            hc = re.sub(r'^.*\b((?:modded\s+)?class\s+\w+)', r'\1', hc)
         m = HDR.match(re.sub(r'\b(modded|sealed|abstract)\b', lambda x: x.group(0), hc))
         if m and body is not None:
             kind, name = m.group(2), m.group(3)
@@ -212,6 +215,8 @@ def parse_file(path, layer, rel, classes, enums, globs):
                 c['doc'] = doc[:DOC_MAX]
             if rel not in c['files']:
                 c['files'].append(rel)
+            c.setdefault('alt', [])
+            c['alt'] += [x for x in alt if x not in c['alt']]
             for mh, mb in split(body):
                 r = member(mh, '', False)
                 if r and not re.match(r'(?:\w+ )*?private\b', r[2]):   # unreachable from mods
@@ -263,6 +268,8 @@ def main():
         # compress file list: first file full, rest as paths too (short enough); modded classes list every layer
         h = 'CLASS ' + name + (('<' + c['tp'] + '>') if c['tp'] else '') + (' : ' + short(c['base']) if c['base'] else '') + ' @' + ' @'.join(files)
         lines.append(h)
+        if c.get('alt'):
+            lines.append(' #base differs under #ifdef: ' + ' or '.join(c['alt'] + [short(c['base'])]))
         if c['doc']:
             lines.append(' #' + c['doc'])
         ovr = []

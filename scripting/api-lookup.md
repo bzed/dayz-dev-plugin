@@ -19,7 +19,7 @@ dayz-api.py chain PlayerBase              # PlayerBase > ManBase > DayZPlayerImp
 Format: `CLASS Name<T> : Base @layers` (1=1_Core .. 5=5_Mission, layers that declare it; the index stores the declaring files, shown by `src`), then members as
 `[static|protected|native] ret Name(params) #doc` or `type field`. Overrides are collapsed into one
 `override: A B C` line (the signature is in the base class). `native` = engine-implemented (`proto native`).
-Output is capped at 120 lines (`--max N`). The index covers vanilla only, not CF/Expansion/mods, and not method bodies
+A `#base differs under #ifdef: A or B` line means the base class depends on a define (for example `Transport` is `Pawn` or `EntityAI`); the site's `bases[].cond` names the define. Output is capped at 120 lines (`--max N`). The index covers vanilla only, not CF/Expansion/mods, and not method bodies
 (for behavior use DayZ-Script-Diff below). Regenerate after a new build:
 `python3 scripts/build-api-index.py <dayz-sources>/scripts api --build "<ver> build <n>"`.
 
@@ -53,7 +53,7 @@ After extracting a new stable build, regenerate the index (see above).
 ## Verification Sources
 | Type | Source | Action |
 |------|--------|--------|
-| Script API (latest build; `/v/experimental/` for the experimental build) | https://diff.yadz.app/ | `api.json` via Bash/jq, or WebFetch `classes/<Name>/` |
+| Script API (latest build; `/v/experimental/` for the experimental build) | https://diff.yadz.app/ | `api/classes/<Name>.json` via curl/jq or WebFetch |
 | Build diff / changelog | https://diff.yadz.app/changelog/ | API diff between any two builds (JS page - use Script Diff git for exact diffs) |
 | Deprecated APIs | https://diff.yadz.app/deprecated/ | Everything marked `[Obsolete]` |
 | Script Diff (official) | https://github.com/BohemiaInteractive/DayZ-Script-Diff | Check exact source code |
@@ -88,29 +88,23 @@ After extracting a new stable build, regenerate the index (see above).
 **Base URL:** `https://diff.yadz.app/` (formerly `dayz-scripts.yadz.app`, which now redirects; the old
 Doxygen paths like `/d5/d78/group___enforce` are gone)
 
-The site publishes machine-readable files for agents (see https://diff.yadz.app/agent.md):
+The site publishes one JSON per type for agents (see https://diff.yadz.app/agent.md; `api.json` is now only a
+name index, so jq queries on `.classes[]` no longer work):
 | File | Content |
 |------|---------|
-| https://diff.yadz.app/api.json | Every class, method, field, enum, global, typedef, macro of the latest build (~8.5 MB) |
+| `https://diff.yadz.app/api/classes/<Name>.json` | One class: `base`, `bases` (with `cond` when the base depends on a define), `methods`, `members`, file and line. Names are case-sensitive; follow `base` for inherited members |
+| `https://diff.yadz.app/api/enums/<Name>.json` | One enum |
+| https://diff.yadz.app/api/globals.json | Functions, constants, typedefs, macros outside any class |
+| https://diff.yadz.app/api.json | Name index of every class and enum (use when a name 404s) |
 | https://diff.yadz.app/assets/notes.json | Community notes keyed by `Type` or `Type.Member` (not from BI) |
-| https://diff.yadz.app/search.json | Compact name index |
 | https://diff.yadz.app/assets/versions.json | Every documented build with its DayZ-Script-Diff commit `sha` |
 
-`api.json` is too large for WebFetch - query it with Bash when available:
 ```bash
-curl -s https://diff.yadz.app/api.json -o /tmp/dayz-api.json   # once per session
-jq '.classes[] | select(.name=="CarScript") | {name, base, file}' /tmp/dayz-api.json
-jq -c '.classes[] | select(.name=="CarScript").methods[] | select(.name=="UpdateLights")' /tmp/dayz-api.json
+curl -s https://diff.yadz.app/api/classes/CarScript.json | jq '{name, base, file}'
+curl -s https://diff.yadz.app/api/classes/CarScript.json | jq -c '.methods[] | select(.name=="UpdateLights")'
 curl -s https://diff.yadz.app/assets/notes.json | jq '."ActionBase.ActionCondition"'
 ```
-
-Without Bash, WebFetch the per-class page:
-```
-WebFetch(
-  url: "https://diff.yadz.app/classes/{CLASS_NAME}/",
-  prompt: "Show the inheritance, and the signature of '{METHOD}' (parameters, return type, modifiers)."
-)
-```
+**(tested)** 2026-10-18, site build 1.30.164078. The site is latest-only; older builds are HTML under `/v/<build>/`.
 
 **Key API Pages:**
 | Category | URL |

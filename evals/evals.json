@@ -28,6 +28,55 @@
       "prompt": "I have my mod sources in git (src/MyMod with config.cpp and scripts). Set it up so I can build signed PBOs on Linux with armake2 and upload to the Workshop with the `workshop` tool. The private key must never end up in git or in the upload. Show me the folder layout and the commands.",
       "expected_output": "Requires bzed's armake2 fork (upstream ignores *.c in signatures) and the upstream nozwock steam-workshop-uploader (no fork needed), checks PATH first; uses dayz-mod-pack.sh; secrets/ git-ignored; keys/ public .bikey; addons/*.pbo + .bisign; notes only config is binarized on Linux unless --binarize-models; does not run workshop create unprompted",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "api-signature-and-chain",
+      "prompt": "what's the exact signature (incl. visibility and param names) of ActionBase.ActionCondition in the current DayZ stable scripts, and what is CarScript's full base class chain up to the root?",
+      "expected_output": "States ActionBase.ActionCondition is protected, returns bool, and takes (PlayerBase player, ActionTarget target, ItemBase item); Gives the CarScript chain: Car, Transport, EntityAI (optionally Pawn before it: the base of Transport depends on a define), Entity, ObjectTyped, Object, IEntity, Managed",
+      "files": [],
+      "assertions": [
+        "States ActionBase.ActionCondition is protected, returns bool, and takes (PlayerBase player, ActionTarget target, ItemBase item)",
+        "Gives the CarScript chain: Car, Transport, EntityAI (optionally Pawn before it: the base of Transport depends on a define), Entity, ObjectTyped, Object, IEntity, Managed"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "api-subclasses-and-enum",
+      "prompt": "list every class that directly extends Weapon_Base in vanilla DayZ 1.30, and tell me the numeric values of ACM_SWIMMING and ACM_RAISED from ActionConditionMask.",
+      "expected_output": "Lists exactly the 9 direct subclasses: Archery_Base, BoltActionRifle_Base, BoltRifle_Base, Flaregun, M249, Magnum_Base, Pistol_Base, Rifle_Base, SingleShotPistol_Base; States ACM_SWIMMING = 4; States ACM_RAISED = 16",
+      "files": [],
+      "assertions": [
+        "Lists exactly the 9 direct subclasses: Archery_Base, BoltActionRifle_Base, BoltRifle_Base, Flaregun, M249, Magnum_Base, Pistol_Base, Rifle_Base, SingleShotPistol_Base",
+        "States ACM_SWIMMING = 4",
+        "States ACM_RAISED = 16"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "api-hook-and-source-file",
+      "prompt": "I want server code to run whenever a car engine starts. which vanilla method on Car do I hook, with its exact signature, which file in scripts.pbo declares Car, and how do I read just that file from the installed game on Linux without extracting everything?",
+      "expected_output": "Names Car.OnEngineStart with signature void OnEngineStart(); Names the declaring file as 3_Game\\Vehicles\\Car.c (3_Game layer) inside dta/scripts.pbo; Uses armake2 cat on scripts.pbo for that single file instead of unpacking the whole PBO",
+      "files": [],
+      "assertions": [
+        "Names Car.OnEngineStart with signature void OnEngineStart()",
+        "Names the declaring file as 3_Game\\Vehicles\\Car.c (3_Game layer) inside dta/scripts.pbo",
+        "Uses armake2 cat on scripts.pbo for that single file instead of unpacking the whole PBO"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "extract-code-only",
+      "prompt": "I want to grep all vanilla DayZ scripts for SetSynchDirty on my linux box. How do I get the script code out of the installed game (steam) with armake2 without dragging out models and textures? give me the commands and say where things are.",
+      "expected_output": "Identifies <DayZ install>/dta/scripts.pbo as the script PBO; Uses armake2 (inspect/cat or the bundled extract-dayz-sources.sh), not extractpbo or unpack of every addon; Extracts only code files (*.c etc.), not models or textures; Writes the output under /tmp or /var/tmp, not below $HOME; Does not follow the @workshop symlinks in the install dir",
+      "files": [],
+      "assertions": [
+        "Identifies <DayZ install>/dta/scripts.pbo as the script PBO",
+        "Uses armake2 (inspect/cat or the bundled extract-dayz-sources.sh), not extractpbo or unpack of every addon",
+        "Extracts only code files (*.c etc.), not models or textures",
+        "Writes the output under /tmp or /var/tmp, not below $HOME",
+        "Does not follow the @workshop symlinks in the install dir"
+      ]
     }
   ]
 }

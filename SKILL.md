@@ -59,7 +59,7 @@ port or "does this still work" question. The essentials, verified on a real 1.30
 5. **NEVER use C#/C++ syntax** -> Enforce Script looks like C but has key differences
 
 ### Before writing any class or method call:
-- [ ] Is this a real DayZ class? -> Verify at diff.yadz.app (api.json) or DayZ-Script-Diff
+- [ ] Is this a real DayZ class? -> Verify at diff.yadz.app (api/classes/<Name>.json) or DayZ-Script-Diff
 - [ ] Is this the correct method signature? -> Check parameter types and order
 - [ ] Does this work on server/client/both? -> Check script module (3_Game/4_World/5_Mission)
 - [ ] Am I null-checking accessors? -> Cast<>, GetInventory(), GetIdentity(), GetPlayer()
@@ -73,7 +73,7 @@ port or "does this still work" question. The essentials, verified on a real 1.30
 **Offline first:** the vanilla 1.30 script API ships compressed in `api/dayz-api.txt.xz`. Query it with
 `python3 <skill-dir>/scripts/dayz-api.py class|find|sub|enum|chain ...` (see `scripting/api-lookup.md`) before going online.
 
-Where to verify (diff.yadz.app `api.json`, DayZ-Script-Diff, BI wiki, CF, Expansion, dzconfig) and the exact
+Where to verify (diff.yadz.app `api/classes/<Name>.json`, DayZ-Script-Diff, BI wiki, CF, Expansion, dzconfig) and the exact
 fetch recipes are in `scripting/api-lookup.md`. Read it before any lookup.
 
 ### Example - WRONG:
@@ -138,7 +138,7 @@ Match the request to a rule, read the file it names, fetch from the web only whe
 
 | Request mentions | Action |
 |---|---|
-| Class or method names (`EntityAI`, `PlayerBase`, `GetInventory()`), "script API" | Look it up (`scripting/api-lookup.md`): `diff.yadz.app/api.json` or DayZ-Script-Diff |
+| Class or method names (`EntityAI`, `PlayerBase`, `GetInventory()`), "script API" | Look it up (`scripting/api-lookup.md`): `diff.yadz.app/api/classes/<Name>.json` or DayZ-Script-Diff |
 | `CfgVehicles`, `CfgWeapons`, `CfgPatches`, `config.cpp`, `hiddenSelections` | `config/config-cpp.md`, then the BI wiki |
 | `types.xml`, `events.xml`, `cfgspawnabletypes.xml`, loot, economy | `config/types-xml.md`, then DayZ-Central-Economy |
 | CF, Expansion, `RPCManager`, `ExpansionMarket`, `ModStorage` | `frameworks/framework-detection.md`, then the CF/Expansion docs |
