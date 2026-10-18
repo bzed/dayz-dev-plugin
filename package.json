@@ -36,6 +36,7 @@
     "config/",
     "compatibility/",
     "scripts/",
+    "api/",
     "SKILL.md",
     "DAYZ_CURSOR_RULES.md",
     "README.md"

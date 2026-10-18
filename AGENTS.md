@@ -17,3 +17,4 @@
 - Statements about game behavior need a test on a real server (see `testing/local-server.md`); mark them **(tested)** with the build number.
 - `SKILL.md` frontmatter must be strict YAML (validate with `yaml.safe_load`) and the description must stay under 1024 characters.
 - Keep `compatibility/YOURMOD_FindFilePath.c` behaviorally identical to CF's `CF.FindFileEx`/`CF.ResolvePath` (CF 1.5.9+); re-diff it after each CF update.
+- Regenerate `api/dayz-api.txt.xz` with `scripts/build-api-index.py` from the vanilla scripts of each new stable build and keep the build number in its header current.

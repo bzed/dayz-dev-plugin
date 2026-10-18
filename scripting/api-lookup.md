@@ -3,6 +3,53 @@
 Where to verify classes, methods, config tokens and server settings, and how to fetch them. Use this
 whenever you are not 100% sure a class, method or token exists (see the No Hallucination Policy in SKILL.md).
 
+## Bundled API index (use first)
+The vanilla script API of the shipped build is in `api/dayz-api.txt.xz` (signatures only, no bodies, first line of
+`//!` doc comments, modded parts merged, private members omitted). Query it with `scripts/dayz-api.py`
+(Python 3 stdlib only; run it by its path inside the skill directory):
+```bash
+dayz-api.py class CarScript --inherited   # members of CarScript and every base class
+dayz-api.py find 'UpdateLights' -c CarScript   # member lines matching a regex, optionally in one class
+dayz-api.py find 'OnCEUpdate'             # across all classes (also enum values and top-level decls)
+dayz-api.py sub Weapon_Base [--all]       # subclasses
+dayz-api.py enum EStatLevels              # enum values
+dayz-api.py src PlayerBase              # declaring script file(s), ready for armake2 cat
+dayz-api.py chain PlayerBase              # PlayerBase > ManBase > DayZPlayerImplement > ...
+```
+Format: `CLASS Name<T> : Base @layers` (1=1_Core .. 5=5_Mission, layers that declare it; the index stores the declaring files, shown by `src`), then members as
+`[static|protected|native] ret Name(params) #doc` or `type field`. Overrides are collapsed into one
+`override: A B C` line (the signature is in the base class). `native` = engine-implemented (`proto native`).
+Output is capped at 120 lines (`--max N`). The index covers vanilla only, not CF/Expansion/mods, and not method bodies
+(for behavior use DayZ-Script-Diff below). Regenerate after a new build:
+`python3 scripts/build-api-index.py <dayz-sources>/scripts api --build "<ver> build <n>"`.
+
+## Extracting the real sources (when the index is not enough)
+For one class, do not extract everything: `dayz-api.py src X` gives the declaring file(s), all inside
+`<install>/dta/scripts.pbo`, and `armake2 cat <install>/dta/scripts.pbo '4_World\Entities\ItemBase.c'` prints that
+file (**tested**, build 25956772). Use the full extraction below when you need many files or `grep` across the code.
+
+Method bodies and non-vanilla code are not in the index. Extract them from the installed PBOs with
+`scripts/extract-dayz-sources.sh <install-or-mod-dir> <out-dir>` (needs armake2 on PATH; put `<out-dir>` under
+`/tmp` or `/var/tmp`). It reads only code, never models or textures: `*.c *.cpp *.h *.hpp *.inc *.json *.cfg *.txt`,
+plus every `config.bin` derapified to `config.cpp`. Output follows the PBO prefix, so `scripts.pbo` becomes
+`<out>/scripts/{1_Core..5_Mission}` and `Addons/ai.pbo` (prefix `DZ\AI`) becomes `<out>/DZ/AI/config.cpp`.
+Takes about 90 s for the whole vanilla install (3.0k script files, 270 configs, 60 MB). **(tested)** build 25956772:
+the extracted `scripts/*.c` were byte-identical to the reference source tree; only `config.cpp` formatting differs
+(derapify layout).
+
+Where the PBOs live (Steam on Linux; the install is `steamapps/common/DayZ`):
+| What | Path |
+|------|------|
+| Script PBO (all `.c`) | `<install>/dta/scripts.pbo` (prefix `scripts`); `dta/bin.pbo`, `gui.pbo`, `system.pbo` hold more configs and layouts |
+| Vanilla addon configs | `<install>/Addons/*.pbo` (one `config.bin` per PBO, prefix `DZ\...`) |
+| DLC maps/content | `<install>/<dlc>/Addons/*.pbo`, e.g. `sakhal/Addons`, `nasdara/addons` (name case varies) |
+| Workshop mods | `steamapps/workshop/content/221100/<workshop-id>/addons/*.pbo`; the `@xxxxxxxx` entries in the install dir are symlinks to them |
+Do not follow the `@...` symlinks when scanning the install dir (the script uses `find` without `-L`, so mods are
+skipped there). Extract a mod by passing its workshop folder instead. Encrypted `.ebo` files cannot be unpacked.
+Single files without extracting: `armake2 inspect <pbo>` lists files, `armake2 cat <pbo> 'dir\file.c'` prints one
+(backslash in the inner path). Installed armake2 0.3.0 has no `-x` on `unpack`, hence the per-file `cat`.
+After extracting a new stable build, regenerate the index (see above).
+
 ## Verification Sources
 | Type | Source | Action |
 |------|--------|--------|
