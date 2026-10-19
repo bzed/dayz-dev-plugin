@@ -280,6 +280,43 @@ client directory. The mod is an example: do not install its key on a real server
   or `stop`. **(tested)**
 - Other DayZ servers on the machine are not yours; check `ps` args before stopping anything by name.
 
+## Expansion bundle: skip the spawn selector before screenshots or item handling
+
+With the Expansion bundle (or just DayZ-Expansion-Spawn-Selection, Workshop 2804241648) the client lands in the Expansion
+spawn selector. While it is up, screenshots show the menu and item handling does not work. Switch it off on a fresh server
+profile before the client joins:
+
+1. Start the server once, so Expansion creates its settings and the storage.
+2. Stop the server.
+3. In `mpmissions/<mission_name>/expansion/settings/SpawnSettings.json` set `"EnableSpawnSelection": 0`.
+4. Delete the player db: `rm mpmissions/<mission_name>/storage_1/players.db` (a stored character skips the fresh-spawn path).
+5. Start the server again, then do the screenshots or item work.
+
+Re-using this server tree for later runs is fine. Repeat the recipe for every new server config that loads the bundle
+or the Spawn-Selection mod. **(tested, 1.30.164078.38: with the recipe applied the client joined straight into the world, HUD
+visible, no selector)** The bundle already contains Spawn-Selection; no separate mod is needed.
+
+### Example: Expansion bundle screenshot
+
+```sh
+S="${CLAUDE_SKILL_DIR}/scripts"; W=$($S/find-dayzserver.sh -w)
+TREE=$($S/make-server-tree.sh /var/tmp/dz-exp)
+for p in CF:1559212036 DabsFramework:2545327648 DayZ-Expansion-Licensed:2116157322 DayZ-Expansion-Bundle:2572331007; do
+  ln -sfn "$W/${p##*:}" "$TREE/@${p%%:*}"; ln -sf "$W/${p##*:}"/keys/*.bikey "$TREE/keys/"; done
+set -- $($S/free-ports.sh 2); GAME=$1; sed -i "1i steamQueryPort = $2;" "$TREE/serverDZ.cfg"
+sed -i 's/^BattlEye.*/BattlEye = 0;/' "$TREE/serverDZ.cfg"          # add the line at the top if absent
+MODS='@CF;@DabsFramework;@DayZ-Expansion-Licensed;@DayZ-Expansion-Bundle'
+# run 1: start the server (cd "$TREE" && ./DayZServer -config=serverDZ.cfg -profiles=profiles "-mod=$MODS" -port=$GAME ...),
+# wait for 'CREATED -> CONNECTED' in its output, stop it; then apply steps 3-4 above (SpawnSettings.json, players.db)
+# run 2: start it again, wait for it, then start the client with the client-side folder names of the same mods:
+$S/dayz-client-headless.sh start /tmp/dzc -name=shot "-mod=@9dd22c91;@1bbd85f5;@0891b3df;@829b91b4" -connect=127.0.0.1 -port=$GAME
+# wait for 'is connected' in profiles/*.ADM, ~45 s more, then: dayz-client-headless.sh shot /tmp/dzc /tmp/dzc/now.png; stop
+```
+
+The `@xxxxxxxx` client folder names are per machine (`@9dd22c91` is CF here); find them with
+`ls -l "<library>/steamapps/common/DayZ" | grep <workshop id>`. Ids are the Workshop ids from `frameworks/expansion.md`.
+Add DayZ-Expansion-Animations (2918418331) to both mod lists if the test drives Expansion cars or helicopters.
+
 ## Not covered
 
 - **gamescope and Xvfb** are installable but were not evaluated; sway headless worked first time. Xvfb has

@@ -47,9 +47,15 @@ Load these, **in this order** (Workshop ids; `-mod=` / symlinked `@` folders):
 | 2 | **Dabs Framework** (required) | 2545327648 (Workshop build, unpatched on 1.30) |
 | 3 | DayZ-Expansion-Licensed (required) | 2116157322 (the pre-release used 2178159769, Licensed-Experimental) |
 | 4 | DayZ-Expansion-Bundle (all modules, incl. Navigation, Vehicles, Garage) | 2572331007 (the pre-release used 2540096189, Bundle-Experimental) |
-| 5 | your mod (last) | |
+| 5 | optional: DayZ-Expansion-Animations (needed to drive Expansion cars and helicopters) | 2918418331 |
+| 6 | your mod (last) | |
 
 All keys come with the mods (`keys/*.bikey`).
+
+- **With the Bundle, Licensed is the only other Expansion item you need.** The Bundle contains every module
+  (Spawn-Selection, Market, Quests, AI, ...), so do not add the single-module items (e.g. DayZ-Expansion-Spawn-Selection, 2804241648). (tested)
+- Booted with CF, Dabs, Licensed, Bundle (ids above): 1081 Game-module files, no `SCRIPT (E)`, a headless client joined and
+  was in the world. (tested, server and client 1.30.164078.38)
 
 - **Without Dabs** the Game module fails with `Undefined function 'Math.Exp'` (Dabs defines `Math.Exp`),
   followed by hundreds of `Bad type 'JsonFileLoader'` / `'array'` cascade errors. Fix the first error, not the cascade. (tested)
@@ -58,6 +64,9 @@ All keys come with the mods (`keys/*.bikey`).
   (Experimental items) booted with that fix. On the stable 1.30 release neither patch is needed.
   On that diag build the Expansion AI NPC classes (`ExpansionQuestNPCAI*`, `ExpansionP2PTraderAI*`) threw
   `Index out of bounds` VM exceptions in the hundreds: Expansion's own, unrelated to your mod. (tested on the pre-release)
+- **Screenshots / item handling on a client:** the Expansion spawn selector blocks them; disable it first, see the recipe in
+  `testing/client-testing.md` ("Expansion bundle: skip the spawn selector"). The ready-made headless run for this set is in the
+  same file, "Example: Expansion bundle screenshot".
 - Navigation/Vehicles are detected with `#ifdef EXPANSIONMODNAVIGATION` / `EXPANSIONMODVEHICLE` (defined by the Expansion preload
   scripts, so they work whatever the mod order).
 - `modded class` must live in the **same script module as the class it modifies**: `Transport` is a `3_Game` class, so
