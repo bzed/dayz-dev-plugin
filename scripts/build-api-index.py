@@ -2,10 +2,15 @@
 """Build the compressed DayZ script API index from the vanilla script sources.
 
 usage: build-api-index.py <dayz-sources>/scripts api [--build "1.30 build 25956772"]
+       build-api-index.py <mod-extract-dir> api --mod expansion --build "DayZ-Expansion-Bundle 1.9.80"
 
 Writes <out-dir>/dayz-api.txt.xz (read it with scripts/dayz-api.py): one block per class (modded parts merged), member
 signatures without bodies, first line of //! doc comments. Format is described in
 the header of the generated file.
+
+With --mod NAME the first argument is the output of extract-dayz-sources.sh for a mod (every PBO of the mod, scripts
+in <pbo prefix>/{1_Core..5_Mission}) and the result is <out-dir>/mod-NAME.txt.xz. Each script module (PBO) gets a short
+id; file references become @L:id|path, and "#M id prefix pbo" header lines say where it came from.
 """
 import re, sys, os, argparse, lzma
 
@@ -56,9 +61,11 @@ def scan(src):
             j = src.find('*/', i + 2)
             j = n if j < 0 else j
             if src.startswith('/*!', i) or src.startswith('/**', i):
-                text = re.sub(r'\s+', ' ', src[i + 3:j]).strip()
-                text = re.sub(r'[@\\]brief\s*', '', text)
+                text = re.sub(r'\s+', ' ', re.sub(r'\n\s*\*+', '\n', src[i + 3:j])).strip()
+                text = re.sub(r'[@\\](?:brief|class)\s*', '', text)
                 text = re.split(r'(?<=[.!?])\s|[@\\](?:code|param|return|see|details|note)\b', text)[0].strip()
+                if re.search(r'©|\(c\)\s*\d{4}|[Cc]opyright|[Ll]icense', text) or text.endswith('.c'):   # file header, not a doc
+                    text = ''
                 out.append('\x01' + text + '\x02')
             out.append('\n' * src.count('\n', i, j))
             i = j + 2; continue
@@ -208,7 +215,7 @@ def class_variants(raw):
     return out
 
 
-def parse_file(path, layer, rel, classes, enums, globs):
+def parse_file(path, layer, rel, classes, enums, globs):   # rel: file token, e.g. 4:Entities/X.c or 3:Core|Entities/X.c
     raw = open(path, encoding='utf-8', errors='replace').read()
     variants = class_variants(raw)
     text = scan(raw)
@@ -249,6 +256,8 @@ def parse_file(path, layer, rel, classes, enums, globs):
                     e['items'].append(nm + ('=' + v if v else '') + (' #' + d[:DOC_MAX] if d else ''))
                 continue
             c = classes.setdefault(name, {'base': None, 'tp': '', 'members': {}, 'files': [], 'doc': ''})
+            if not modded:
+                c['plain'] = True
             if base and not c['base']:
                 c['base'] = base
             if tparams and not c['tp']:
@@ -267,6 +276,7 @@ def parse_file(path, layer, rel, classes, enums, globs):
             continue
         if m and body is None and m.group(2) == 'class':   # forward / empty class
             c = classes.setdefault(m.group(3), {'base': None, 'tp': '', 'members': {}, 'files': [], 'doc': doc[:DOC_MAX]})
+            c['plain'] = True
             if rel not in c['files']:
                 c['files'].append(rel)
             continue
@@ -281,34 +291,94 @@ def parse_file(path, layer, rel, classes, enums, globs):
             globs['fn' if k == 'm' else 'var'].append(sig)
 
 
+def module_ids(root):
+    """{module dir (relative to root): short id} for every dir that has a layer dir (1_Core..5_Mission) as a child."""
+    mods = []
+    for dp, dn, fn in os.walk(root):
+        dn.sort()
+        if any(d in LAYERS for d in dn):
+            mods.append(os.path.relpath(dp, root))
+            dn[:] = [d for d in dn if d not in LAYERS]
+    ids, used = {}, set()
+    for m in sorted(mods):
+        parts = [x for x in m.split(os.sep) if x != '.']
+        if parts and parts[-1].lower() == 'scripts':
+            parts = parts[:-1] or parts
+        if len(parts) > 1:
+            parts = parts[1:]
+        i = '/'.join(parts) or 'scripts'
+        while i in used:
+            i += '_'
+        used.add(i)
+        ids[m] = i
+    return ids
+
+
+def collect_defines(root, pbos):
+    """{pbo prefix: [names]} from CfgMods `defines[]` in every config.cpp and from active `#define NAME` lines in .c files."""
+    out = {}
+    prefixes = sorted(pbos, key=len, reverse=True)
+    for dp, dn, fn in os.walk(root):
+        dn.sort()
+        rel = os.path.relpath(dp, root).replace(os.sep, '/')
+        pre = next((x for x in prefixes if rel == x or rel.startswith(x + '/')), rel.split('/')[0])
+        for f in sorted(fn):
+            if f != 'config.cpp' and not f.endswith('.c'):
+                continue
+            t = open(os.path.join(dp, f), encoding='utf-8', errors='replace').read()
+            names = []
+            if f == 'config.cpp':
+                for m in re.finditer(r'\bdefines\[\]\s*=\s*\{([^}]*)\}', t):
+                    names += re.findall(r'"([^"]+)"', m.group(1))
+            else:
+                names = re.findall(r'^[ \t]*#define[ \t]+(\w+)', t, re.M)
+            for n in names:
+                if n not in out.setdefault(pre, []):
+                    out[pre].append(n)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scripts'); ap.add_argument('out')
     ap.add_argument('--build', default='')
+    ap.add_argument('--mod', default='', help='index a mod extraction instead of the vanilla scripts; writes mod-NAME.txt.xz')
     a = ap.parse_args()
     classes, enums, globs = {}, {}, {'typedef': [], 'fn': [], 'var': []}
+    ids = module_ids(a.scripts) if a.mod else {'.': ''}
+    pbos = {}
+    if a.mod and os.path.exists(os.path.join(a.scripts, 'pbo-map.tsv')):
+        for l in open(os.path.join(a.scripts, 'pbo-map.tsv')):
+            pre, _, pbo = l.rstrip('\n').partition('\t')
+            pbos[pre.replace('\\', '/')] = pbo
     for layer in sorted(LAYERS):
-        root = os.path.join(a.scripts, layer)
-        for dp, dn, fn in os.walk(root):
-            dn.sort()
-            for f in sorted(fn):
-                if not f.endswith('.c'):
-                    continue
-                p = os.path.join(dp, f)
-                rel = LAYERS[layer] + ':' + os.path.relpath(p, root)
-                parse_file(p, layer, rel, classes, enums, globs)
+        for mod in sorted(ids):
+            root = os.path.join(a.scripts, mod, layer)
+            for dp, dn, fn in os.walk(root):
+                dn.sort()
+                for f in sorted(fn):
+                    if not f.endswith('.c'):
+                        continue
+                    p = os.path.join(dp, f)
+                    rel = LAYERS[layer] + ':' + (ids[mod] + '|' if ids[mod] else '') + os.path.relpath(p, root)
+                    parse_file(p, layer, rel, classes, enums, globs)
     lines = [
-        '# DayZ script API index, ' + (a.build or 'unknown build') + '. Generated by scripts/build-api-index.py from the vanilla scripts.',
-        '# All scripts are in dta/scripts.pbo; inner path = layer dir + path, e.g. 4:Entities/X.c -> 4_World\\Entities\\X.c (see dayz-api.py src).',
+        '# ' + ('Script API index of the mod ' + a.mod if a.mod else 'DayZ script API index') + ', ' + (a.build or 'unknown build') + '. Generated by scripts/build-api-index.py from the ' + ('extracted mod PBOs' if a.mod else 'vanilla scripts') + '.',
+        '# ' + ('Each script module (PBO) is listed in a "#M id prefix pbo" line; the pbo is relative to the mod directory. A file @L:id|path is inner path = layer dir + path inside that pbo.' if a.mod else
+              'All scripts are in dta/scripts.pbo; inner path = layer dir + path, e.g. 4:Entities/X.c -> 4_World\\Entities\\X.c (see dayz-api.py src).'),
         '# Bodies stripped. "#text" = first line of the //! doc comment. Layers: 1=1_Core 2=2_GameLib 3=3_Game 4=4_World 5=5_Mission.',
-        '# CLASS Name<T> : Base @L:path ... (files that declare it, first = main declaration, L = layer 1..5; modded parts merged). Members: [static|override|private|protected|native] ret Name(params) | type field. Overridden methods are listed by name only on an "override:" line (signature is in the base class); use `dayz-api.py class X --inherited` to walk bases.',
-        '# "native" = implemented in the engine (proto native). ENUM Name: value list. TYPEDEF/FN/VAR sections at the end hold top-level declarations.',
-        '']
+        '# CLASS Name<T> : Base @L:path ... (files that declare it, first = main declaration, L = layer 1..5; modded parts merged; a trailing [modded] means every declaration is `modded class`, the class itself lives in vanilla or another mod). Members: [static|override|private|protected|native] ret Name(params) | type field. Overridden methods are listed by name only on an "override:" line (signature is in the base class); use `dayz-api.py class X --inherited` to walk bases.',
+        '# "native" = implemented in the engine (proto native). ENUM Name: value list. TYPEDEF/FN/VAR sections at the end hold top-level declarations.' + (' DEFINES lists the #ifdef defines per PBO prefix (from config.cpp defines[] and #define lines).' if a.mod else '')]
+    if a.mod:
+        for m in sorted(ids, key=lambda m: ids[m]):
+            pre = m.replace(os.sep, '/')
+            lines.append('#M ' + ids[m] + ' ' + pre + ' ' + pbos.get(pre, '?'))
+    lines.append('')
     for name in sorted(classes):
         c = classes[name]
         files = c['files']
         # compress file list: first file full, rest as paths too (short enough); modded classes list every layer
-        h = 'CLASS ' + name + (('<' + c['tp'] + '>') if c['tp'] else '') + (' : ' + short(c['base']) if c['base'] else '') + ' @' + ' @'.join(files)
+        h = 'CLASS ' + name + (('<' + c['tp'] + '>') if c['tp'] else '') + (' : ' + short(c['base']) if c['base'] else '') + ' @' + ' @'.join(files) + ('' if c.get('plain') else ' [modded]')
         lines.append(h)
         if c.get('alt'):
             lines.append(' #base is ' + short(c['base']) + ' on a stable server, ' + ' or '.join(c['alt']) + ' when its #ifdef define (e.g. FEATURE_NETWORK_RECONCILIATION) is off')
@@ -330,9 +400,13 @@ def main():
     for sec in ('typedef', 'fn', 'var'):
         lines.append(sec.upper())
         lines.extend(' ' + s for s in sorted(set(globs[sec])))
+    if a.mod:
+        lines.append('DEFINES')   # compile-time defines: usable in #ifdef, set by CfgMods defines[] or a #define in a script file
+        for pre, names in sorted(collect_defines(a.scripts, pbos).items()):
+            lines.append(' ' + pre + ': ' + ' '.join(names))
     lines = [l for l in lines if l.strip() or l == '']
     os.makedirs(a.out, exist_ok=True)
-    out = os.path.join(a.out, 'dayz-api.txt.xz')
+    out = os.path.join(a.out, 'mod-' + a.mod + '.txt.xz' if a.mod else 'dayz-api.txt.xz')
     with lzma.open(out, 'wt', encoding='utf-8', preset=9 | lzma.PRESET_EXTREME) as f:
         f.write('\n'.join(lines) + '\n')
     print(out, os.path.getsize(out), 'bytes', len(classes), 'classes', len(enums), 'enums')

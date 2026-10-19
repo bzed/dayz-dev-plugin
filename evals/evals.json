@@ -77,6 +77,42 @@
         "Writes the output under /tmp or /var/tmp, not below $HOME",
         "Does not follow the @workshop symlinks in the install dir"
       ]
+    },
+    {
+      "id": 9,
+      "name": "expansion-market-api",
+      "prompt": "I'm writing a mod that hooks into Expansion's market. Which class is the market module, which script files/PBO declare it, and what's its base class? Don't go online if the skill has the data.",
+      "expected_output": "Uses scripts/dayz-api.py with -m expansion (or -m all) on ExpansionMarketModule; reports the Expansion Market module PBO/file; states the base class chain; does not invent members",
+      "files": [],
+      "assertions": [
+        "Runs dayz-api.py with -m expansion (or all) rather than WebFetch or guessing",
+        "Names ExpansionMarketModule and the Market module (market_scripts.pbo or 4_World\\DayZExpansion_Market)",
+        "Does not claim a method exists that the index does not list"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "expansion-ifdef-defines",
+      "prompt": "How do I make my mod compile whether or not Expansion Hardline and CF are loaded? Which #ifdef defines can I use?",
+      "expected_output": "Uses dayz-api.py defines; lists EXPANSIONMODHARDLINE and a CF define such as CF_MODULES; explains #ifdef usage",
+      "files": [],
+      "assertions": [
+        "Runs dayz-api.py defines (or reads the DEFINES section) to get real define names",
+        "Mentions EXPANSIONMODHARDLINE",
+        "Mentions a CF define such as CF_MODULES"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "cot-dabs-lookup",
+      "prompt": "I want to add a menu to Community Online Tools and use Dabs Framework's view binding for it. What classes should I look at for each?",
+      "expected_output": "Looks up classes in the cot and dabs indexes (-m cot,dabs), e.g. JMRenderableModuleBase/JMModuleBase for COT and ScriptView/ViewBinding for Dabs; only names classes found in the index",
+      "files": [],
+      "assertions": [
+        "Uses dayz-api.py with -m cot and -m dabs (or all)",
+        "Names real COT module/form classes found in the index",
+        "Names real Dabs classes found in the index (e.g. ScriptView, ViewBinding)"
+      ]
     }
   ]
 }

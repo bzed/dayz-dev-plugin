@@ -4,7 +4,7 @@ Where to verify classes, methods, config tokens and server settings, and how to 
 whenever you are not 100% sure a class, method or token exists (see the No Hallucination Policy in SKILL.md).
 
 ## Bundled API index (use first)
-The vanilla script API of the shipped build is in `api/dayz-api.txt.xz` (signatures only, no bodies, first line of
+The vanilla script API of the shipped build is in `api/dayz-api.txt.xz` (mods: see "Mod indexes" below) (signatures only, no bodies, first line of
 `//!` doc comments, modded parts merged, private members omitted). Query it with `scripts/dayz-api.py`
 (Python 3 stdlib only; run it by its path inside the skill directory):
 ```bash
@@ -19,9 +19,34 @@ dayz-api.py chain PlayerBase              # PlayerBase > ManBase > DayZPlayerImp
 Format: `CLASS Name<T> : Base @layers` (1=1_Core .. 5=5_Mission, layers that declare it; the index stores the declaring files, shown by `src`), then members as
 `[static|protected|native] ret Name(params) #doc` or `type field`. Overrides are collapsed into one
 `override: A B C` line (the signature is in the base class). `native` = engine-implemented (`proto native`).
-A `#base is A on a stable server, B when ... is off` line means the base class depends on a define; the index shows the base the stable dedicated server uses (`Transport` is `Pawn`, `Man` is `Person`, both under `FEATURE_NETWORK_RECONCILIATION`). **(tested)** 2026-10-18: the vanilla stable Linux dedicated server (Steam buildid 25460313) lists `FEATURE_NETWORK_RECONCILIATION` in the `defines:` of its script log, so the `Pawn`/`Person` branch is live; the define lives in the engine binary, not in any script or config. Output is capped at 120 lines (`--max N`). The index covers vanilla only, not CF/Expansion/mods, and not method bodies
+A `#base is A on a stable server, B when ... is off` line means the base class depends on a define; the index shows the base the stable dedicated server uses (`Transport` is `Pawn`, `Man` is `Person`, both under `FEATURE_NETWORK_RECONCILIATION`). **(tested)** 2026-10-18: the vanilla stable Linux dedicated server (Steam buildid 25460313) lists `FEATURE_NETWORK_RECONCILIATION` in the `defines:` of its script log, so the `Pawn`/`Person` branch is live; the define lives in the engine binary, not in any script or config. Output is capped at 120 lines (`--max N`). The vanilla index has no method bodies
 (for behavior use DayZ-Script-Diff below). Regenerate after a new build:
 `python3 scripts/build-api-index.py <dayz-sources>/scripts api --build "<ver> build <n>"`.
+
+### Mod indexes (CF, COT, Dabs, Expansion)
+Same format and CLI, one file per mod, built from freshly unpacked Workshop PBOs (`extract-dayz-sources.sh`) and only
+searched when asked for with `-m`:
+| `-m` | Mod | Workshop id | Version when indexed |
+|------|-----|-------------|----------------------|
+| `cf` | Community Framework | 1559212036 | 1.5.9 |
+| `cot` | Community Online Tools | 1564026768 | 2026.10.151130 |
+| `dabs` | Dabs Framework | 2545327648 | updated 2026-10-15 |
+| `expansion` | DayZ-Expansion-Bundle (Core, AI, BaseBuilding, Book, Chat, Garage, Groups, Hardline, MapAssets, Market, Missions, NameTags, Navigation, P2PMarket, PersonalStorage, PlayerList, Quests, SpawnSelection, Vehicles, ...; not the separate -Licensed mod) | 2572331007 | 1.9.80 |
+```bash
+dayz-api.py class ExpansionMarketModule -m expansion      # one Expansion class; header shows {module} that declares it
+dayz-api.py class PlayerBase -m expansion --mods-only     # only what Expansion adds to vanilla PlayerBase (modded parts)
+dayz-api.py find 'RegisterRPC|OnRPC' -m cf,cot            # across CF and COT
+dayz-api.py defines MARKET                                # #ifdef defines: EXPANSIONMODMARKET, CF_MODULES, ... (CfgMods defines[])
+dayz-api.py src ActionBase -m expansion                   # pbo + inner path per declaring file, for `armake2 cat`
+```
+- A mod's `modded class X` shows as its own `[mod] CLASS X ... [modded]` block next to the vanilla `[vanilla] CLASS X`; `[modded]`
+  means the mod does not declare the class itself. Members of all #ifdef branches are merged, so check `defines` before
+  relying on a branch. The hits are signatures of the indexed version only; mods change, and a server may run another version.
+- `class X --inherited` follows the base chain through every loaded index; load the mod that holds the base (Expansion
+  classes extend CF classes, so use `-m expansion,cf`), otherwise the chain stops at the first class outside the loaded set.
+- `src` prints the pbo (relative to the mod's Workshop dir) and inner path; `armake2 cat <mod dir>/addons/market_scripts.pbo '<inner path>'` prints the file.
+- Regenerate after a mod update: extract fresh into a new `/tmp` dir, then
+  `python3 scripts/build-api-index.py <extract-dir> api --mod expansion --build "DayZ-Expansion-Bundle <ver> (workshop 2572331007, updated <date>)"`.
 
 ## Extracting the real sources (when the index is not enough)
 For one class, do not extract everything: `dayz-api.py src X` gives the declaring file(s), all inside

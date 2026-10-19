@@ -10,6 +10,8 @@
 # Only code is extracted: *.c *.cpp *.h *.hpp *.inc *.json *.cfg *.txt, and config.bin (derapified to config.cpp).
 # Models, textures, sounds, layouts and shaders are never read. Files land in <out>/<pbo prefix>/<inner path>,
 # e.g. prefix "scripts" -> <out>/scripts/3_Game/..., prefix "DZ\AI" -> <out>/DZ/AI/config.cpp.
+# <out>/pbo-map.tsv lists "<prefix>\t<pbo path relative to the install dir>" for every PBO that yielded files
+# (scripts/build-api-index.py reads it to tell `dayz-api.py src` which PBO holds a file).
 # Needs armake2 on PATH. Write <out-dir> below /tmp or /var/tmp, not below $HOME.
 set -eu
 [ $# -eq 2 ] || { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
@@ -49,5 +51,6 @@ while IFS= read -r -d '' dir; do
       n=$((n + 1))
     done < "$tmp/want"
     echo "$n files  $prefix  <- ${pbo#"$install"/}"
+    printf '%s\t%s\n' "$prefix" "${pbo#"$install"/}" >> "$out/pbo-map.tsv"
   done
 done

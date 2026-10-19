@@ -70,8 +70,9 @@ port or "does this still work" question. The essentials, verified on a real 1.30
 [Use WebFetch to get accurate info]
 ```
 
-**Offline first:** the vanilla 1.30 script API ships compressed in `api/dayz-api.txt.xz`. Query it with
-`python3 <skill-dir>/scripts/dayz-api.py class|find|sub|enum|chain ...` (see `scripting/api-lookup.md`) before going online.
+**Offline first:** the vanilla 1.30 script API ships compressed in `api/dayz-api.txt.xz`, and so do CF, Community Online Tools,
+Dabs Framework and the DayZ-Expansion-Bundle (`api/mod-*.txt.xz`, add them with `-m cf,cot,dabs,expansion` or `-m all`). Query with
+`python3 <skill-dir>/scripts/dayz-api.py class|find|sub|enum|chain|src|defines ...` (see `scripting/api-lookup.md`) before going online.
 
 Where to verify (diff.yadz.app `api/classes/<Name>.json`, DayZ-Script-Diff, BI wiki, CF, Expansion, dzconfig) and the exact
 fetch recipes are in `scripting/api-lookup.md`. Read it before any lookup.
@@ -125,7 +126,7 @@ if (player)
 | `compatibility/version-130.md` | 1.30 changes, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths |
 | `compatibility/YOURMOD_FindFilePath.c` | Fallback FindFile path helper for mods without CF (CF mods use `CF.FindFileEx`) | Any code that calls `FindFile` |
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
-| `api/dayz-api.txt.xz` + `scripts/dayz-api.py` | Bundled vanilla 1.30 script API (6.7k classes, 430 enums, signatures + doc lines), queried with `dayz-api.py class X [--inherited]`, `find REGEX`, `sub X`, `enum X`, `chain X` | Any class/method/enum signature, base class or hook lookup (use before the web) |
+| `api/*.txt.xz` + `scripts/dayz-api.py` | Bundled script API: vanilla 1.30 (6.7k classes, 430 enums, signatures + doc lines) and the mods CF, COT, Dabs Framework, Expansion Bundle (`-m`), queried with `dayz-api.py class X [--inherited]`, `find REGEX`, `sub X`, `enum X`, `chain X`, `src X`, `defines [REGEX]` | Any class/method/enum signature, base class or hook lookup (use before the web) |
 | `scripting/api-lookup.md` | Where to verify classes/tokens, curl/jq/WebFetch recipes for diff.yadz.app, BI wiki, CF, Expansion | Any class/method/token you are not sure about |
 | `scripting/best-practices.md` | Enforce Script/memory/null-safety rules, mod folder tree, anti-patterns, modded class/RPC/net-sync snippets | Writing or reviewing code |
 | `systems/mod-packaging.md` | armake2 build/sign/binarize, keys, Workshop upload folder, tags, `workshop` uploader (bzed armake2 fork required) | Building, signing or publishing a mod |
