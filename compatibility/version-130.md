@@ -1,6 +1,7 @@
 # DayZ 1.30 Compatibility Guide
 
 > **Status (Oct 15, 2026):** 1.30 is the **PC Stable** release. No experimental branch is needed to target it.
+> **Update 1.30.164200 (build 25963285):** a minor update changed base-building APIs, see the last table of section 3.
 > **Source of truth:** script diff of the previous stable (1.29.163709) against 1.30.164014 (the last pre-release
 > build checked; local `dayz-sources` git, tags `1.29` / `1.30`) plus test mods booted on a 1.30.164014.27
 > dedicated server (Linux, Oct 2, 2026). Statements marked **(tested)** were observed there. The stable
@@ -208,6 +209,26 @@ Adding a parameter, even one with a default, changes the signature: the old over
 after `RPC_PLAYER_SYMPTOM_OFF` changes. Mods that store or send vanilla RPC IDs as **raw ints**
 (or count from a vanilla value) break. Always use the enum names; keep mod RPC IDs in your own range.
 
+### Changes in the stable update 25956772 → 25963285 (1.30.164200)
+Found by diffing the shipped API index of both builds (declarations only, **not run on a server**). They hit mods
+that touch base building, `ConstructionPart` data or custom actions.
+
+| Before (25956772) | Now (25963285) | Notes |
+|---|---|---|
+| `ConstructionPart.GetSupportProvided(int category)` / `GetSupportRequirement(int category)` returning `int` | `bool GetSupportProvided(int category, out int providedStrength)` / `bool GetSupportRequirement(int category, out int requiredStrength)` | same change on `ConstructionPartStaticsSupportData` and on `ConstructionPartTypeData.GetPartTypeSupportProvided/Requirement`; callers and overrides both break |
+| `ConstructionPart.TryHandleUtilityParts(EntityAI parent)` | `TryQueueUtilityPartsUpdate(ConstructionBase con)` | utility parts update through a queue: `QueueUpdateUtilityParts()`, `UpdateUtilityParts()` (returns `true` if changed) |
+| `ConstructionPartTypeData.m_UtilityAutomaticBuild`, `GetPartTypeUtilityAutobuildPartsList()` | removed | `m_TriggersUtilityPartUpdate` / `TriggersUtilityPartsUpdate()` say whether a part state change triggers the utility update; `InitUtilityBuildData()` reads it from config |
+| (none) | `InvertSupportBehavior()`, classes `ConstructionPartRebuildInvertedSupport` (+ `…TypeData`) | rebuilt parts that react inversely to support |
+| (none) | `ConstructionBase.IgnoreHouseCollisions()` | map-authoring flag for rebuilt structures |
+| `CarScript.IsMoving()` | now declared on `Transport` | calls keep working; an override in a `CarScript` subclass still compiles |
+| `ActionBase` | adds `IsLockTargetOnUse()`, overridden by about 20 vanilla actions | only a problem if your action class declares a method of the same name with another signature |
+| `MiscGameplayFunctions.FilterObstructedObjectsByGrouping(...)` | removed | |
+| `NavmeshTest`, `NavmeshTest_A..F` | removed | test objects; only matters if a mod extends them |
+| Workbench API in `workbenchApi.c` (`Workbench`, `WorldEditor`, `WorldEditorAPI`, ...) | split into `1_Core/WorkbenchAPI/` (`AnimEditor`, `GameViewer`, `BuildResourceContext`, `GeneratedResources`, ...) | only Workbench plugins; some old members are gone |
+
+New without breaking anything: `FishingSplashEffect` / `FishingSplashEffecter` (fishing action particles),
+`DateTimeUtcAsInt` (`GetYear/Month/Day/Hour/Minute/Second`).
+
 ## 4. Silent breakers
 
 These compile on 1.30 but do something different.
@@ -362,6 +383,7 @@ Run this on every mod written for 1.29 or older. Each grep is a quick first pass
 [ ] grep -rn 'GetExplosionParticleID\|AddExplosionEffectForSurface\|ShootsExplosiveAmmo' → AmmoTypesAPI.GetExplosiveEffectData
 [ ] grep -rn 'Is3rdPersonDisabled\|SurfaceUnderObject\|CCTWaterSurface\|ActionFillBottleBase\|ActionCarHorn' → see §5
 [ ] grep -rn 'DIAG_DEVELOPER\|BUILD_EXPERIMENTAL' → must not be used as "is 1.30"
+[ ] grep -rn 'GetSupportProvided\|GetSupportRequirement\|TryHandleUtilityParts\|m_UtilityAutomaticBuild' → 25963285 signatures (§3, stable update table)
 [ ] Overrides of anything in §3 table → signature
 [ ] Boot on a 1.30 server: no (E), review (W) obsolete warnings
 [ ] Back up storage_1 before the first 1.30 boot (older servers cannot read it back)
