@@ -220,10 +220,10 @@ that touch base building, `ConstructionPart` data or custom actions.
 | `ConstructionPartTypeData.m_UtilityAutomaticBuild`, `GetPartTypeUtilityAutobuildPartsList()` | removed | `m_TriggersUtilityPartUpdate` / `TriggersUtilityPartsUpdate()` say whether a part state change triggers the utility update; `InitUtilityBuildData()` reads it from config |
 | (none) | `InvertSupportBehavior()`, classes `ConstructionPartRebuildInvertedSupport` (+ `…TypeData`) | rebuilt parts that react inversely to support |
 | (none) | `ConstructionBase.IgnoreHouseCollisions()` | map-authoring flag for rebuilt structures |
-| `CarScript.IsMoving()` | now declared on `Transport` | calls keep working; an override in a `CarScript` subclass still compiles |
+| `CarScript.IsMoving()` | declared on `Transport` now (`CarScript` overrides it); new `Transport.HasCrew()` | calls keep working. All Motorbike classes (`Motorbike`, `MotorbikeScript`, `Motorbike_01/02_*`, parts, actions, HUD) still exist unchanged; `MotorbikeScript` gains a `CanReleaseAttachment` override |
 | `ActionBase` | adds `IsLockTargetOnUse()`, overridden by about 20 vanilla actions | only a problem if your action class declares a method of the same name with another signature |
 | `MiscGameplayFunctions.FilterObstructedObjectsByGrouping(...)` | removed | |
-| `NavmeshTest`, `NavmeshTest_A..F` | removed | test objects; only matters if a mod extends them |
+| `NavmeshTest`, `NavmeshTest_A..F` | renamed `Land_NavmeshTest`, `Land_NavmeshTest_A..F` | test objects; only matters if a mod extends them |
 | `Workbench`, `WorldEditor`, `WorldEditorAPI`, `WBModuleDef`, ... callable from game scripts **(tested, build 25963285)** | every Workbench class now sits inside `#ifdef WORKBENCH` (`1_Core/workbenchApi.c` and the new `1_Core/WorkbenchAPI/`), so on a game or server build the identifier does not exist | **breaks mods**: DabsFramework 1.51 (`SampleMVC.c:33`, `Workbench.Dialog(...)`) fails with `Can't find variable 'Workbench'`, then `Can't compile "Mission" script module!` and a crash at boot. Wrap such calls in `#ifdef WORKBENCH`. `ResourceBrowser`, `WorldEditor*` are gone entirely. The API index lists these classes anyway: it ignores `#ifdef`, so check the declaring file before using one |
 
 New without breaking anything: `FishingSplashEffect` / `FishingSplashEffecter` (fishing action particles),
