@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the compressed DayZ script API index from the vanilla script sources.
 
-usage: build-api-index.py <dayz-sources>/scripts api [--build "1.30 build 25956772"]
+usage: build-api-index.py <dayz-sources>/scripts api [--build "1.30 build 25963285"]
        build-api-index.py <mod-extract-dir> api --mod expansion --build "DayZ-Expansion-Bundle 1.9.80"
 
 Writes <out-dir>/dayz-api.txt.xz (read it with scripts/dayz-api.py): one block per class (modded parts merged), member

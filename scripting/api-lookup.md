@@ -51,14 +51,14 @@ dayz-api.py src ActionBase -m expansion                   # pbo + inner path per
 ## Extracting the real sources (when the index is not enough)
 For one class, do not extract everything: `dayz-api.py src X` gives the declaring file(s), all inside
 `<install>/dta/scripts.pbo`, and `armake2 cat <install>/dta/scripts.pbo '4_World\Entities\ItemBase.c'` prints that
-file (**tested**, build 25956772). Use the full extraction below when you need many files or `grep` across the code.
+file (**tested**, build 25963285). Use the full extraction below when you need many files or `grep` across the code.
 
 Method bodies and non-vanilla code are not in the index. Extract them from the installed PBOs with
 `scripts/extract-dayz-sources.sh <install-or-mod-dir> <out-dir>` (needs armake2 on PATH; put `<out-dir>` under
 `/tmp` or `/var/tmp`). It reads only code, never models or textures: `*.c *.cpp *.h *.hpp *.inc *.json *.cfg *.txt`,
 plus every `config.bin` derapified to `config.cpp`. Output follows the PBO prefix, so `scripts.pbo` becomes
 `<out>/scripts/{1_Core..5_Mission}` and `Addons/ai.pbo` (prefix `DZ\AI`) becomes `<out>/DZ/AI/config.cpp`.
-Takes about 90 s for the whole vanilla install (3.0k script files, 270 configs, 60 MB). **(tested)** build 25956772:
+Takes about 90 s for the whole vanilla install (3.0k script files, 270 configs, 60 MB). **(tested)** build 25963285:
 the extracted `scripts/*.c` were byte-identical to the reference source tree; only `config.cpp` formatting differs
 (derapify layout).
 
