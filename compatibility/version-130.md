@@ -1,7 +1,7 @@
 # DayZ 1.30 Compatibility Guide
 
 > **Status (Oct 15, 2026):** 1.30 is the **PC Stable** release. No experimental branch is needed to target it.
-> **Update 1.30.164200 (build 25963285):** a minor update changed base-building APIs, see the last table of section 3.
+> **Update 1.30.164200 (build 25963285):** a minor update changed base-building APIs and **gated the Workbench classes behind `#ifdef WORKBENCH`**, which breaks DabsFramework 1.51 on a server; see the last table of section 3.
 > **Source of truth:** script diff of the previous stable (1.29.163709) against 1.30.164014 (the last pre-release
 > build checked; local `dayz-sources` git, tags `1.29` / `1.30`) plus test mods booted on a 1.30.164014.27
 > dedicated server (Linux, Oct 2, 2026). Statements marked **(tested)** were observed there. The stable
@@ -210,7 +210,7 @@ after `RPC_PLAYER_SYMPTOM_OFF` changes. Mods that store or send vanilla RPC IDs 
 (or count from a vanilla value) break. Always use the enum names; keep mod RPC IDs in your own range.
 
 ### Changes in the stable update 25956772 → 25963285 (1.30.164200)
-Found by diffing the shipped API index of both builds (declarations only, **not run on a server**). They hit mods
+Found by diffing the shipped API index of both builds (declarations only); only the Workbench row was run on a server. They hit mods
 that touch base building, `ConstructionPart` data or custom actions.
 
 | Before (25956772) | Now (25963285) | Notes |
@@ -224,7 +224,7 @@ that touch base building, `ConstructionPart` data or custom actions.
 | `ActionBase` | adds `IsLockTargetOnUse()`, overridden by about 20 vanilla actions | only a problem if your action class declares a method of the same name with another signature |
 | `MiscGameplayFunctions.FilterObstructedObjectsByGrouping(...)` | removed | |
 | `NavmeshTest`, `NavmeshTest_A..F` | removed | test objects; only matters if a mod extends them |
-| Workbench API in `workbenchApi.c` (`Workbench`, `WorldEditor`, `WorldEditorAPI`, ...) | split into `1_Core/WorkbenchAPI/` (`AnimEditor`, `GameViewer`, `BuildResourceContext`, `GeneratedResources`, ...) | only Workbench plugins; some old members are gone |
+| `Workbench`, `WorldEditor`, `WorldEditorAPI`, `WBModuleDef`, ... callable from game scripts **(tested, build 25963285)** | every Workbench class now sits inside `#ifdef WORKBENCH` (`1_Core/workbenchApi.c` and the new `1_Core/WorkbenchAPI/`), so on a game or server build the identifier does not exist | **breaks mods**: DabsFramework 1.51 (`SampleMVC.c:33`, `Workbench.Dialog(...)`) fails with `Can't find variable 'Workbench'`, then `Can't compile "Mission" script module!` and a crash at boot. Wrap such calls in `#ifdef WORKBENCH`. `ResourceBrowser`, `WorldEditor*` are gone entirely. The API index lists these classes anyway: it ignores `#ifdef`, so check the declaring file before using one |
 
 New without breaking anything: `FishingSplashEffect` / `FishingSplashEffecter` (fishing action particles),
 `DateTimeUtcAsInt` (`GetYear/Month/Day/Hour/Minute/Second`).
@@ -384,6 +384,7 @@ Run this on every mod written for 1.29 or older. Each grep is a quick first pass
 [ ] grep -rn 'Is3rdPersonDisabled\|SurfaceUnderObject\|CCTWaterSurface\|ActionFillBottleBase\|ActionCarHorn' → see §5
 [ ] grep -rn 'DIAG_DEVELOPER\|BUILD_EXPERIMENTAL' → must not be used as "is 1.30"
 [ ] grep -rn 'GetSupportProvided\|GetSupportRequirement\|TryHandleUtilityParts\|m_UtilityAutomaticBuild' → 25963285 signatures (§3, stable update table)
+[ ] grep -rn 'Workbench\.\|WorldEditor' outside `#ifdef WORKBENCH` → "Can't find variable 'Workbench'" on 25963285
 [ ] Overrides of anything in §3 table → signature
 [ ] Boot on a 1.30 server: no (E), review (W) obsolete warnings
 [ ] Back up storage_1 before the first 1.30 boot (older servers cannot read it back)
