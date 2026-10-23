@@ -12,7 +12,7 @@
     {
       "id": 2,
       "prompt": "need a server side helper for our mod (prefix MyKits) that loads every *.json from :MyKits\\Kits\\ and every *.json from the mission folder's kits\\ subfolder into an array<ref MyKits_Kit> (class MyKits_Kit { string Name; ref array<string> Items; }). our servers are on 1.30. write the .c file(s) and a short NOTES.md on where to put them and any server requirements.",
-      "expected_output": "Loader code that works on 1.30 (CF.FindFileEx or fallback helper, forward slashes, profile folder inside server folder)",
+      "expected_output": "Loader code that works on 1.30 stable (plain FindFile with $profile:/$mission: placeholders is fine since 1.30.164200; no CF.FindFileEx/fallback helper or profile-folder rule needed; forward slashes; open results via the placeholder path)",
       "files": []
     },
     {

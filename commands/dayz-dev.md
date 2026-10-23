@@ -27,7 +27,7 @@ You are a DayZ Enforce Script development expert. Help the user with their DayZ 
    - `systems/` - Mod structure, networking, inventory, actions, weapons, vehicles
    - `frameworks/` - Framework detection, CF, Expansion
    - `config/` - config.cpp, types.xml, server config
-   - `compatibility/` - Version 1.30 (current stable; CF.FindFileEx / FindFile helper) and 1.28 changes and migration
+   - `compatibility/` - Version 1.30 (current stable; FindFile fixed in 1.30.164200, workaround removal) and 1.28 changes and migration
 
 3. **Fetch current documentation** using WebFetch if needed
 

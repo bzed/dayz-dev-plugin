@@ -75,8 +75,8 @@ MyMod/
 | Hardcode framework dependencies | Detect at runtime via config.cpp |
 | Skip null checks on Cast<> | Always check before using result |
 | Write files outside `$profile:`/`$saves:`/`$mission:` | Server FileIO is sandboxed to those; `$storage:` works only after the first tick following `OnMissionStart` and not on a first boot (no `storage_1`) |
-| `FindFile("$profile:...")` | `CF.FindFileEx("$profile:...", ...)` (or `FindFile(YOURMOD_FindFilePath(...))` without CF) - 1.30 ignores placeholders in `FindFile` |
-| Backslashes in paths (`"$profile:MyMod\\cfg.json"`) | Forward slashes (`"$profile:MyMod/cfg.json"`) - required for `FindFile` on 1.30 |
+| `CF.FindFileEx("$profile:...", ...)` or `FindFile(YOURMOD_FindFilePath(...))` | plain `FindFile("$profile:...", ...)` - DZEXP-134 is fixed since 1.30.164200; the workarounds are only needed on older 1.30 builds |
+| Backslashes in paths (`"$profile:MyMod\\cfg.json"`) | Forward slashes (`"$profile:MyMod/cfg.json"`) - work everywhere; `FindFile` needed them on 1.30 before 1.30.164200 |
 | `g_Game.GetMissionFolderPath()` | Folder of `g_Game.GetMissionPath()` - the former is `""` on servers |
 | `override void OnCEUpdate()` | `OnCEIterate(float currentTime, float elapsedTime)` (1.30 never calls `OnCEUpdate`) |
 | Version `#ifdef DAYZ_1_30` around current code | No `#ifdef` needed; only the current engine version is defined, so `DAYZ_1_30` code vanishes on 1.31 |

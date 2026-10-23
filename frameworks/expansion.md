@@ -23,7 +23,8 @@ A 1.30 server needs:
 - The regular **Licensed** and **Bundle** items (the `-experimental` variants were only for the 1.30 pre-release).
 - The regular **Dabs Framework** Workshop build, unpatched (Expansion and Dabs run as published on 1.30 stable on the
   user's servers) (tested). The Workshop Dabs build did not compile on the 1.30 pre-release, which is why older notes mention a patched fork.
-- The profile folder inside the server executable's folder (a symlink works), because vanilla 1.30 `FindFile` is broken (DZEXP-134).
+- On 1.30 builds before 1.30.164200 only: the profile folder inside the server executable's folder (a symlink works), because vanilla
+  `FindFile` was broken there (DZEXP-134). Since 1.30.164200 (build 25963285) `FindFile` is fixed and any `-profiles=` works (tested with vanilla and CF).
 - No `-newErrorsAreWarnings=1` and no script patches for Expansion or Dabs: both were pre-release workarounds only.
 
 Not re-checked here against the 1.30 release build: the Workshop Licensed/Bundle ids. Boot it and read `script_*.log` before

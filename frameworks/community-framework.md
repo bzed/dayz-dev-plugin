@@ -38,7 +38,10 @@ Load only **one** of the two: both declare `JM_CF_Scripts` and conflict. COT wor
 Announced with **DayZ Expansion 1.9.74** (for DayZ 1.30):
 
 - Use **CF 1.5.9+** (and the current COT if you use COT). Older CF/COT lack the FindFile workaround.
-- **The server profile folder must be inside the server executable's folder** (a symlink works too). Otherwise the
+- **Obsolete since DayZ 1.30.164200 (build 25963285), where BI fixed `FindFile` (tested):** the profile folder rule below only
+  applies to servers on an older 1.30 build. On the current build an absolute `-profiles=` outside the server folder works,
+  with plain `FindFile` and with `CF.FindFileEx` (it passes the path through).
+- **Older 1.30 builds only: the server profile folder must be inside the server executable's folder** (a symlink works too). Otherwise the
   game cannot find it, because of the vanilla 1.30 `FindFile` bug (DZEXP-134): the workaround resolves `$profile:`
   to a path relative to the server folder and only keeps the last component of `-profiles=`.
   ```sh
@@ -57,7 +60,7 @@ Announced with **DayZ Expansion 1.9.74** (for DayZ 1.30):
    from `-config=`, which is only the folder name (`dayzOffline.chernarusplus`, no `mpmissions/`), so `$mission:`
    and `$storage:` resolve to a folder that doesn't exist: `FindFileEx` returns nothing and the diag build prints
    a `Virtual Machine Exception`. With `-mission=mpmissions/dayzOffline.chernarusplus` both worked.
-3. CF needs a writable `$profile:` (it creates `cf_findfile_dz130_test` there once) and `-profiles` must
+3. CF needs a writable `$profile:` (it creates `cf_findfile_dz130_test` there once). On builds before 1.30.164200 `-profiles` must
    be a folder under the game directory (it only keeps the last path component; see the requirement above). It logs
    "Profile folder X does not exist inside game directory" otherwise. Mission folder order: `GetMissionPath()`, `-mission=`,
    `-config=` template, world-name guess.
@@ -345,15 +348,23 @@ text. There are no static `IntToString`/`StringToInt` helpers in CF 1.5.8; use t
 
 ## CF.FindFileEx and CF.ResolvePath
 
-DayZ 1.30's `FindFile` ignores `$profile:`/`$mission:`/`$saves:` (DZEXP-134, not fixed at release).
+**Not needed since DayZ 1.30.164200 (build 25963285): BI fixed DZEXP-134 and plain `FindFile` resolves the placeholders
+again (tested).** On that build `CF.FindFileEx` detects the working engine (`CF.s_FindFileEx_ResolvePath` stays false) and
+just calls `FindFile`, so it is harmless, but `CF.FindFileEx(...)` → `FindFile(...)` (same arguments) is the cleanup.
+A mod that depended on CF only for `FindFileEx` can drop the CF dependency. See `compatibility/version-130.md` section 2.
+
+History: the 1.30.164014 pre-release and the 1.30 release ignored `$profile:`/`$mission:`/`$saves:` in `FindFile` (DZEXP-134).
 CF adds `CF.ResolvePath` (prefixed path -> real path) and `CF.FindFileEx`, a drop-in `FindFile` wrapper that
-tests for the bug and resolves the path only when needed. Use it for every `FindFile` call. **Needs CF 1.5.9+; CF 1.5.8 does not have it.**
+tests for the bug and works around it only when needed. **Needs CF 1.5.9+; CF 1.5.8 does not have it.**
+The Workshop update of 2026-10-12 (still "1.5.9") changed the workaround: when the bug is present `FindFileEx` now calls
+`FindFile` with `flags = -1` instead of resolving the path with `CF.ResolvePath` (still public). The table below was made with the
+earlier `ResolvePath` version.
 Signature: `CF.FindFileEx(string pattern, out string fileName, out FileAttr attr, FindFileFlags flags)`
 (`flags` has no default).
 
-Tested with CF 1.5.9 (as CF-Test) on a 1.30 pre-release server (first call after the mission started, `-profiles=profiles -mission=mpmissions/dayzOffline.chernarusplus`):
+Tested with CF 1.5.9 (as CF-Test, `ResolvePath` version) on a 1.30 pre-release server (first call after the mission started, `-profiles=profiles -mission=mpmissions/dayzOffline.chernarusplus`):
 
-| Pattern | Result on 1.30 |
+| Pattern | Result on 1.30.164014 |
 |---|---|
 | `$profile:cfp/*.json` (also with `\`) | found (resolved) |
 | `$mission:cfg*.json` | found only with `-mission=`; otherwise nothing + VM exception |

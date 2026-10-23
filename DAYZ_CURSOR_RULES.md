@@ -25,7 +25,7 @@ DayZ uses **Enforce Script**, a C-like language. Key differences from C/C#/C++:
 - Trust `GetGame().IsClient()` during init (returns FALSE)
 - Skip null checks on `Cast<>`, `GetInventory()`, `GetIdentity()`
 - Leave empty `#ifdef`/`#endif` blocks (causes segfaults)
-- Write files outside `$profile:`, `$saves:` or `$mission:`; use backslashes in paths; pass `$`-placeholder paths to `FindFile` (broken on 1.30)
+- Write files outside `$profile:`, `$saves:` or `$mission:`; use backslashes in paths; on 1.30 builds before 1.30.164200, pass `$`-placeholder paths to `FindFile` (fixed since 1.30.164200)
 - Create methods with more than 16 parameters
 - Compare against `int.MIN` (`1 < int.MIN` returns TRUE - known bug)
 
@@ -115,8 +115,8 @@ if (player && player.GetInventory())
 ## 1.30 Changes (stable)
 Verified on a 1.30.164014 server. Details: `compatibility/version-130.md`.
 1. **Version define**: the engine defines only the current version (`DAYZ_1_30`); no version `#ifdef` is needed for 1.30 code
-2. **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:`** on 1.30 (searches the server root instead) - use `CF.FindFileEx` (CF 1.5.9+; fallback without CF: `compatibility/YOURMOD_FindFilePath.c`); other file functions still accept placeholders
-3. **Forward slashes in all paths** - backslashes break `FindFile` on 1.30
+2. **`FindFile` is fixed since 1.30.164200 (build 25963285)** (DZEXP-134; tested): it resolves `$profile:`/`$mission:`/`$storage:`/`$saves:` again, the script API is unchanged. Remove the workarounds: `CF.FindFileEx` → `FindFile`, drop `YOURMOD_FindFilePath`; the profile folder may live outside the server folder again. Only older 1.30 builds need them
+3. **Forward slashes in all paths** - they work everywhere (`FindFile` needed them before 1.30.164200; `CfgMods` `files[]` still needs them)
 4. **`ProcessVariables()`** → `ProcessVariables(float elapsedTime)`; **`OnCEUpdate()` is never called** → `OnCEIterate(float currentTime, float elapsedTime)`
 5. **Car lights**: `CreateFrontLight/CreateRearLight` no longer called → register `VehicleLightProfile*` via `m_LightsComponent.RegisterLight`; `ToggleHeadlights()` removed → `LightToggle()`
 6. **Inventory**: `*TakeEntityToCargo`/`*TakeEntityAsAttachment` obsolete → `*TakeEntityToTarget*`

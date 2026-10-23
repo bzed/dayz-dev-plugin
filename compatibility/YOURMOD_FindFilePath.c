@@ -1,4 +1,11 @@
 /**
+ * OBSOLETE since DayZ 1.30.164200 (build 25963285): BI fixed DZEXP-134, plain FindFile resolves "$profile:", "$mission:",
+ * "$storage:" and "$saves:" again and accepts backslashes (tested on a 1.30.164200.56 server). On that build the self-test below
+ * passes and the helper returns the pattern unchanged apart from the slash flip. Remove it: FindFile(YOURMOD_FindFilePath(p), ...)
+ * -> FindFile(p, ...), delete this file and the "$profile:yourmod_findfile_dz130_test" file it created. Keep it only for servers
+ * on an older 1.30 build. It mirrors CF 1.5.9 as of early October 2026; the CF update of 2026-10-12 passes flags = -1
+ * instead of resolving the path and was not ported (see compatibility/version-130.md, section 2).
+ *
  * FALLBACK FindFile path helper for DayZ 1.30 (server side), for mods WITHOUT a Community Framework
  * dependency. If your mod uses CF, call CF.FindFileEx instead (CF 1.5.9+).
  *

@@ -1,6 +1,6 @@
 ---
 name: dayz-dev
-description: DayZ development and local DayZ server testing for DayZ 1.30 (stable). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, porting mods to 1.30, FindFile and $profile/$mission path breakage, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer (or the experimental server for the next build), isolated server trees, free ports, headless boots, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's armake2 fork and nozwock's steam-workshop-uploader).
+description: DayZ development and local DayZ server testing for DayZ 1.30 (stable). Use it for writing, reviewing or porting DayZ mods in Enforce Script (vanilla, Community Framework, Expansion), including class and method lookups, config.cpp, types.xml, RPCs, inventory, vehicles, porting mods to 1.30, FindFile and $profile/$mission path breakage and removing its workarounds, OnCEUpdate/ProcessVariables/vehicle-light changes. Also use it whenever a DayZ dedicated server should be started or tested locally, with or without mods, including finding the Steam DayZServer (or the experimental server for the next build), isolated server trees, free ports, headless boots, reading script logs and RPTs, even when the user only wants to check that a server or serverDZ.cfg starts. Also for building, signing and publishing mods with armake2 (PBOs, .bikey/.biprivatekey/.bisign, Steam Workshop upload folder; needs bzed's armake2 fork and nozwock's steam-workshop-uploader).
 allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-mod-pack.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-headless.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh:*)
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 
 > **Dynamic documentation orchestrator** for DayZ mod development.
 > Supports vanilla Enforce Script, Community Framework (CF), and DayZ Expansion.
-> Target version: **DayZ 1.30 (stable since Oct 15, 2026; checked on v1.30.164014)**. 1.28 notes kept for migration.
+> Target version: **DayZ 1.30 (stable since Oct 15, 2026; checked on v1.30.164014, FindFile and the stable update on v1.30.164200 / build 25963285)**. 1.28 notes kept for migration.
 
 ## Philosophy
 
@@ -26,14 +26,16 @@ allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), 
 port or "does this still work" question. The essentials, verified on a real 1.30.164014 server:
 
 - **The engine defines the version**: `DAYZ_1_30` on 1.30 (only the current one). 1.30 code needs no version `#ifdef`.
-- **`FindFile` ignores `$profile:`/`$mission:`/`$storage:`/`$saves:` on 1.30** and silently searches the
-  server root instead (DZEXP-134, not fixed at release). Replace every `FindFile` with `CF.FindFileEx` (CF 1.5.9+; it detects the bug and
-  calls `CF.ResolvePath`); without a CF dependency use the fallback `compatibility/YOURMOD_FindFilePath.c`. All other file
-  functions still accept the placeholders.
-- **Servers need the profile folder inside the server executable's folder** (symlink ok; `-profiles=profile`, not an
-  absolute path elsewhere) and **CF 1.5.9+** (the Workshop CF; no CF-Test/COT-Test); Expansion also needs Dabs Framework (`frameworks/expansion.md`).
-  CF and our fallback helper both resolve `$profile:` relative to the server folder. See `compatibility/version-130.md` section 2.
-- **Paths use forward slashes.** Backslashes break `FindFile` on 1.30.
+- **`FindFile` works again since 1.30.164200 (build 25963285) (tested): DZEXP-134 is fixed.** The 1.30.164014 pre-release and the
+  1.30 release (25956772) ignored `$profile:`/`$mission:`/`$storage:`/`$saves:` in `FindFile` and listed the server root instead.
+  The script API is unchanged (same `FindFile`/`FindFileFlags` declarations), so the fix needs no code change, and the workarounds
+  can be removed: `CF.FindFileEx` → `FindFile`, `FindFile(YOURMOD_FindFilePath(p), ...)` → `FindFile(p, ...)`. Leaving
+  `CF.FindFileEx` in is harmless (it detects the fixed engine and passes through). Details and the removal steps:
+  `compatibility/version-130.md` section 2.
+- **The profile folder may be anywhere again** (an absolute `-profiles=` outside the server folder works since 1.30.164200).
+  The "inside the server executable's folder" rule only applies to older 1.30 builds. Servers need **CF 1.5.9+** when they run CF mods
+  (the Workshop CF; no CF-Test/COT-Test); Expansion also needs Dabs Framework (`frameworks/expansion.md`).
+- **Paths use forward slashes.** `FindFile` accepts backslashes again since 1.30.164200, but forward slashes work everywhere.
   This includes the `CfgMods` script module `files[]` in `config.cpp`: with backslashes a 1.30 server compiles none of
   the mod's scripts and reports no error.
 - **Compile breakers** for mods written for 1.29 or older: `ProcessVariables()` → `ProcessVariables(float elapsedTime)`,
@@ -124,7 +126,7 @@ if (player)
 | `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
 | `testing/client-testing.md` | Run the DayZ client headless (sway), join a local server with mods, RPC-driven client+server tests, read client logs | Client-side behavior: UI, replication, RPCs, client script errors |
 | `compatibility/version-130.md` | 1.30 changes, FindFile/path rules, review checklist | Any 1.30 question, reviewing/porting a mod, file paths |
-| `compatibility/YOURMOD_FindFilePath.c` | Fallback FindFile path helper for mods without CF (CF mods use `CF.FindFileEx`) | Any code that calls `FindFile` |
+| `compatibility/YOURMOD_FindFilePath.c` | Obsolete since 1.30.164200: FindFile path helper for mods without CF, for servers on older 1.30 builds | Removing it from a mod, or a server stuck on an old 1.30 build |
 | `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 | `api/*.txt.xz` + `scripts/dayz-api.py` | Bundled script API: vanilla 1.30 (6.7k classes, 430 enums, signatures + doc lines) and the mods CF, COT, Dabs Framework, Expansion Bundle (`-m`), queried with `dayz-api.py class X [--inherited]`, `find REGEX`, `sub X`, `enum X`, `chain X`, `src X`, `defines [REGEX]` | Any class/method/enum signature, base class or hook lookup (use before the web) |
 | `scripting/api-lookup.md` | Where to verify classes/tokens, curl/jq/WebFetch recipes for diff.yadz.app, BI wiki, CF, Expansion | Any class/method/token you are not sure about |
@@ -167,7 +169,7 @@ DayZ-Script-Diff commits listed in https://diff.yadz.app/assets/versions.json.
 Experimental, 1042420, only when the user wants to test against the next build). If the server is missing ask the user to
 install it through Steam (no steamcmd unless asked). **Never copy, edit or write anything in the Steam directories**: run from a
 tree made by `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>` with mods symlinked in and passed as relative `-servermod=`/`-mod=`
-paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran before CF is added to it** (CF changes how data is stored; stale storage gives CF/Storage errors; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
+paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran whenever CF is added or removed** (CF changes how data is stored; storage written with a different CF state gives storage errors, e.g. `Scripted variables corrupted` after removing CF; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
 RCon ports at the default**: use `${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3`. A PBO that builds is not a tested mod: boot it and
 compare script module counts with vanilla.
 
