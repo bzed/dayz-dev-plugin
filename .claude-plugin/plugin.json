@@ -2,9 +2,21 @@
   "name": "dayz-dev",
   "description": "DayZ development and local server testing: Enforce Script, Community Framework and Expansion mods for DayZ 1.30 (stable; 1.30 migration review), plus starting and testing local dedicated servers with or without mods.",
   "author": {
-    "name": "Chaos",
-    "email": ""
+    "name": "Bernd Zeimetz",
+    "url": "https://github.com/bzed"
   },
-  "homepage": "https://github.com/DayZGhost/dayz-dev-plugin",
-  "repository": "https://github.com/DayZGhost/dayz-dev-plugin"
+  "homepage": "https://github.com/bzed/dayz-dev-plugin",
+  "repository": "https://github.com/bzed/dayz-dev-plugin",
+  "version": "1.2.0",
+  "icon": ".claude-plugin/icon.png",
+  "license": "GPL-3.0-only",
+  "keywords": [
+    "dayz",
+    "enforce-script",
+    "modding",
+    "community-framework",
+    "expansion",
+    "gamedev",
+    "server-testing"
+  ]
 }

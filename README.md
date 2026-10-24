@@ -17,10 +17,19 @@ A comprehensive plugin for DayZ mod development with Enforce Script and for test
 
 ## Installation
 
+### Claude Code (plugin marketplace)
+
+```
+/plugin marketplace add bzed/dayz-dev-plugin
+/plugin install dayz-dev@dayz-dev
+```
+
+Or in one step on Claude Code 2.1.275 or later: `/plugin install dayz-dev --marketplace bzed/dayz-dev-plugin`.
+
 ### Claude Code (Git)
 
 ```bash
-git clone https://github.com/DayZGhost/dayz-dev-plugin.git ~/.claude/skills/dayz-dev
+git clone https://github.com/bzed/dayz-dev-plugin.git ~/.claude/skills/dayz-dev
 ```
 
 ### Gemini Code Assist
@@ -30,7 +39,7 @@ git clone https://github.com/DayZGhost/dayz-dev-plugin.git ~/.claude/skills/dayz
 3. Gemini Code Assist automatically loads `.gemini/GEMINI.md` as project context
 
 ```bash
-git clone https://github.com/DayZGhost/dayz-dev-plugin.git /tmp/dayz-dev
+git clone https://github.com/bzed/dayz-dev-plugin.git /tmp/dayz-dev
 cp -r /tmp/dayz-dev/.gemini /tmp/dayz-dev/scripting /tmp/dayz-dev/systems /tmp/dayz-dev/frameworks /tmp/dayz-dev/config /tmp/dayz-dev/testing /tmp/dayz-dev/compatibility your-project/
 ```
 
@@ -40,7 +49,7 @@ cp -r /tmp/dayz-dev/.gemini /tmp/dayz-dev/scripting /tmp/dayz-dev/systems /tmp/d
 2. Copy to your DayZ mod project root as `.cursorrules`
 
 ```bash
-curl -o .cursorrules https://raw.githubusercontent.com/DayZGhost/dayz-dev-plugin/main/DAYZ_CURSOR_RULES.md
+curl -o .cursorrules https://raw.githubusercontent.com/bzed/dayz-dev-plugin/main/DAYZ_CURSOR_RULES.md
 ```
 
 ### Manual
@@ -147,6 +156,22 @@ Use the `/dayz-dev` command for direct queries:
 - New features (sealed, Obsolete, new Entity methods)
 - Framework version requirements
 
+## Platform support
+
+Developed and tested on Linux. The tools this plugin uses (armake2, steam-workshop-uploader, Python and Node.js for `dayz-api.py` and the installer) are available for Windows and should work there, but this has **not been tested**. The helper scripts in `scripts/` are bash scripts, so on Windows they need Git Bash or WSL. Feedback and pull requests for Windows (and macOS) are welcome: https://github.com/bzed/dayz-dev-plugin/issues
+
+## Origin
+
+This is a fork of [DayZGhost/dayz-dev-plugin](https://github.com/DayZGhost/dayz-dev-plugin) by Chaos (DankMindless), which created the plugin structure, the knowledge files, the Gemini and Cursor variants and the 1.28 migration notes (first commit 2026-02-24). This fork, maintained by [Bernd Zeimetz](https://github.com/bzed) at https://github.com/bzed/dayz-dev-plugin, continues from there with:
+
+- DayZ 1.30 (stable) support and the 1.29 -> 1.30 migration notes, tested on real dedicated servers
+- local server testing (find the Steam server, isolated server trees, headless boots, log reading)
+- mod building, signing and Workshop upload with armake2
+- compressed script API indexes for vanilla and the Expansion, CF, COT and Dabs mods, with the `dayz-api.py` lookup CLI
+- publication on the Claude Code plugin marketplace
+
+Issues and pull requests for this fork go to https://github.com/bzed/dayz-dev-plugin. The upstream project is kept as the `origin` remote for reference.
+
 ## Contributing
 
 1. Fork the repository
@@ -157,7 +182,11 @@ Use the `/dayz-dev` command for direct queries:
 
 ## License
 
-GNU General Public License v3.0 - see [LICENSE](LICENSE).
+The documentation, scripts and tooling of this plugin are licensed under the GNU General Public License v3.0 - see [LICENSE](LICENSE).
+
+**Exception: `api/`.** The script API indexes are not GPL. They contain declarations extracted from the DayZ scripts, which are the copyright of Bohemia Interactive a.s. (all rights reserved), and from the Workshop mods Community Framework, Community Online Tools, Dabs Framework and DayZ-Expansion, which belong to their respective authors. Method bodies are stripped, and the indexes are included only as a reference for looking up signatures. See [api/LICENSE.md](api/LICENSE.md) and [NOTICE](NOTICE).
+
+DayZ is a trademark of Bohemia Interactive a.s. This plugin is an unofficial community project and is not affiliated with, endorsed by or sponsored by Bohemia Interactive or Anthropic.
 
 ## Credits
 

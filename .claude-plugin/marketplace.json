@@ -2,8 +2,8 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dayz-dev",
   "owner": {
-    "name": "Chaos",
-    "email": ""
+    "name": "Bernd Zeimetz",
+    "url": "https://github.com/bzed"
   },
   "metadata": {
     "description": "DayZ development plugin with dynamic documentation fetching for Enforce Script, Community Framework, and Expansion",
@@ -28,9 +28,10 @@
         "arma"
       ],
       "author": {
-        "name": "Chaos"
+        "name": "Bernd Zeimetz",
+        "url": "https://github.com/bzed"
       },
-      "homepage": "https://github.com/DayZGhost/dayz-dev-plugin"
+      "homepage": "https://github.com/bzed/dayz-dev-plugin"
     }
   ]
 }

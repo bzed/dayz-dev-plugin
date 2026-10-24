@@ -1,0 +1,14 @@
+dayz-dev plugin
+Copyright (C) the contributors of https://github.com/DayZGhost/dayz-dev-plugin (Chaos / DankMindless)
+Copyright (C) 2026 Bernd Zeimetz and contributors of https://github.com/bzed/dayz-dev-plugin
+
+Documentation, scripts and tooling: GNU General Public License v3.0 (see LICENSE).
+
+Not covered by the GPL: api/*.txt.xz. See api/LICENSE.md.
+  - api/dayz-api.txt.xz: declarations from the DayZ scripts,
+    Copyright (c) Bohemia Interactive a.s. All rights reserved.
+  - api/mod-*.txt.xz: declarations from third-party Workshop mods,
+    Copyright of their respective authors.
+
+DayZ is a trademark of Bohemia Interactive a.s. This project is unofficial and not
+affiliated with Bohemia Interactive or Anthropic.
