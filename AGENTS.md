@@ -22,5 +22,17 @@
 
 ## Releases
 
-- Semver. The version lives in four places that must match: `package.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` (`metadata.version` and `plugins[0].version`).
-- To release: bump all of them, run `claude plugin validate .`, commit on `main`, tag `vX.Y.Z` (annotated) and push the tag to `origin`. Major bump for a new DayZ stable target or breaking layout changes.
+Semver. Major for a new DayZ stable target or breaking layout changes, minor for new features or content, patch for fixes and doc corrections. Release from `main` only.
+
+The version lives in four places that must match: `package.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` (`metadata.version` and `plugins[0].version`). Check with `grep -rn '"version"' package.json .claude-plugin/`.
+
+Steps:
+
+1. Make sure the tree is clean, `main` is up to date with `origin`, and the API indexes and docs are current for the stable build (see Content rules).
+2. Bump the version in all four places, e.g. `sed -i 's/"version": "OLD"/"version": "NEW"/' package.json .claude-plugin/plugin.json .claude-plugin/marketplace.json`.
+3. Run `claude plugin validate .`; it must pass without warnings.
+4. Commit as `Release X.Y.Z` (with the usual Co-Authored-By trailer).
+5. Tag it: `git tag -a vX.Y.Z -m "dayz-dev X.Y.Z: <one-line summary>"`.
+6. Push both: `git push origin main vX.Y.Z`.
+7. Optional: `gh release create vX.Y.Z --generate-notes`.
+8. Merge to `dayz-1.30` (fast-forward) only when asked, then push it too.
