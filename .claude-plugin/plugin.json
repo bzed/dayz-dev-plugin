@@ -7,7 +7,7 @@
   },
   "homepage": "https://github.com/bzed/dayz-dev-plugin",
   "repository": "https://github.com/bzed/dayz-dev-plugin",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "icon": ".claude-plugin/icon.png",
   "license": "GPL-3.0-only",
   "keywords": [

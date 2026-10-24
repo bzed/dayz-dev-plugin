@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "DayZ development plugin with dynamic documentation fetching for Enforce Script, Community Framework, and Expansion",
-    "version": "1.2.0"
+    "version": "2.0.0"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "source": ".",
       "description": "DayZ development and local server testing: Enforce Script, Community Framework and Expansion mods for DayZ 1.30 (stable; 1.30 migration review), plus starting and testing local dedicated servers with or without mods.",
       "category": "development",
-      "version": "1.2.0",
+      "version": "2.0.0",
       "tags": [
         "dayz",
         "enforce-script",
