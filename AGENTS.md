@@ -9,7 +9,7 @@
 | `main` | The latest DayZ **stable** release | Tracks the current stable build; currently 1.30 (stable since Oct 15, 2026). |
 
 - Commit new work on `main` unless told otherwise; only touch `dayz-1.30` when asked.
-- The upstream DayZGhost repo is not configured as a remote; never push there.
+- Push to `origin` only.
 - When the next version (e.g. 1.31) reaches stable, `main` moves to it. Ask before creating or renaming version branches, and before documenting an experimental build on `main`.
 
 ## Content rules
