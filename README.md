@@ -170,7 +170,7 @@ This is a fork of [DayZGhost/dayz-dev-plugin](https://github.com/DayZGhost/dayz-
 - compressed script API indexes for vanilla and the Expansion, CF, COT and Dabs mods, with the `dayz-api.py` lookup CLI
 - publication on the Claude Code plugin marketplace
 
-Issues and pull requests for this fork go to https://github.com/bzed/dayz-dev-plugin. The upstream project is kept as the `origin` remote for reference.
+Issues and pull requests for this fork go to https://github.com/bzed/dayz-dev-plugin.
 
 ## Contributing
 
