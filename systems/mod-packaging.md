@@ -96,7 +96,7 @@ MyMod/                     git repository
 |---|---|---|
 | `config.cpp` (any `*.cpp`) | preprocessed, rapified to `config.bin` | copied as text |
 | `*.rvmat` | rapified | copied |
-| `*.p3d`, `*.rtm` | **copied as-is** on Linux (warning `non-windows-binarization`); BI's `binarize.exe` is used only on Windows | copied |
+| `*.p3d`, `*.rtm` | **copied as-is** on Linux (warning `non-windows-binarization`) unless `--proton-binarize` is given; BI's `binarize.exe` runs on Windows, or under Proton with that flag (see the texture caveat below) | copied |
 | `.c` scripts, `.paa`, `.ogg`, `.wss`, ... | copied | copied |
 
 Consequences: rapified `config.bin` is the default because it is smaller, faster to load and what the
@@ -113,7 +113,17 @@ binarization for that addon only.
 temporary sandbox and Wine prefix (first run takes a while), converts every `.p3d`/`.rtm` from a staging copy (your sources stay
 MLOD), builds and signs, and deletes the sandbox. It finds DayZ Tools and Proton under the Steam root (override with
 `STEAM_ROOT`, `DAYZ_TOOLS`, `PROTON`) and fails with the binarize log if a model does not convert.
-Tested with the one-triangle model above only.
+
+**Known bug (fork 782396e, upstream #21): `--proton-binarize` loses texture alpha.** binarize.exe resolves face
+texture paths (`mymod\data\glass_ca.paa`) **relative to its current directory**. BI's tools run it from `P:\`, while
+armake2 copies only the `.p3d` into the sandbox and runs it from the `Binarize` folder, so no texture is found
+and no error is printed. Tested 2026-10-31 (binarize 1.30.164200.56, Proton Hotfix) with a two-triangle MLOD
+textured with a DXT5 `_ca.paa`: from a `P:` root the ODOL model and section flags are `0x802020`
+(IsAlpha|IsTransparent|IsAlphaFog), and through armake2 they are `0`. The rest of the file is byte-identical.
+Upstream reports this as alpha faces (glass, sights, foliage) rendering opaque; that was not checked in game here.
+Models without alpha textures are not affected. Until the fork is fixed, binarize models with alpha
+textures by hand with the `P:` recipe below, put the ODOL into the source tree as `model.p3d`, and build
+without `--proton-binarize` (which copies `.p3d` files unchanged).
 
 Upstream armake2 only calls BI's `binarize.exe` (DayZ Tools, Steam app 830640) on Windows, so on Linux `.p3d`/`.rtm`
 stay MLOD; the bzed fork adds `build --proton-binarize` (Linux, opt-in). Running the exe yourself under Proton works, with one trap. Wine maps `Z:` to `/`, and Binarize
@@ -125,23 +135,60 @@ Tested with Proton Hotfix (Steam's default compat tool here) and DayZ Tools from
 ```sh
 W=$(mktemp -d)                                   # sandbox that becomes Wine's Z:
 cp -r "$STEAM/steamapps/common/DayZ Tools/Bin/Binarize" "$W/Binarize"
-mkdir -p "$W/in" "$W/out" "$W/prefix"; cp model.p3d "$W/in/"
-ln -sfn "$W" "$W/prefix/pfx/dosdevices/z:"       # after the first proton run created the prefix (see below)
+mkdir -p "$W/out" "$W/prefix" "$W/P/mymod"       # P/<prefix path> = your addon (prefix mymod here)
+cp -r src/MyMod/. "$W/P/mymod/"                  # model + its textures, at the paths the model references
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM" STEAM_COMPAT_DATA_PATH="$W/prefix" SteamAppId=830640
-cd "$W/Binarize"
-"$STEAM/steamapps/common/Proton Hotfix/proton" run ./binarize.exe \
-    -norecurse -always -silent -maxProcesses=0 'Z:\in' 'Z:\out' model.p3d     # result: $W/out/model.p3d
+"$STEAM/steamapps/common/Proton Hotfix/proton" run cmd.exe /c exit   # first run creates the prefix
+ln -sfn "$W"   "$W/prefix/pfx/dosdevices/z:"     # confine Z: to the sandbox
+ln -sfn "$W/P" "$W/prefix/pfx/dosdevices/p:"     # P: = project root
+cd "$W/P"                                        # current directory = P:\, so textures resolve
+"$STEAM/steamapps/common/Proton Hotfix/proton" run 'Z:\Binarize\binarize.exe' \
+    -norecurse -always -silent -maxProcesses=0 'P:\mymod' 'Z:\out' model.p3d   # result: $W/out/model.p3d
 ```
 
-The prefix is created by the first `proton run`, so run any trivial command once (or run Binarize once, kill it
-after a few seconds) and then replace `pfx/dosdevices/z:` with the symlink to the sandbox. Use backslash
-paths with a drive letter; no `P:` drive is needed. Verified: a hand-made MLOD triangle (`MLOD`) came out as
-`ODOL` version 7. **Not verified:** a real model with textures/materials (those resolve against `P:`, so a
-real project needs the `P:` drive pointing at the project root inside the sandbox), and loading the ODOL in a
-server. Do not kill leftover Wine processes with `pkill -f binarize...` from a shell whose own command line
+Use backslash paths with a drive letter. A model without textures binarizes from any directory: a hand-made MLOD triangle
+came out as `ODOL` version 7. With textures, **the current directory must be the `P:` root** (see the known bug
+above). An strace showed binarize stat'ing `<cwd>\mymod\data\glass_ca.paa`. Textures from other addons (vanilla `dz\…`)
+are only found if they also exist under `P:` (extracted game data). Drop `-silent` and redirect through
+`cmd /c "… > Z:\out\log.txt 2>&1"` to get the log ("Convert model …", "No model config used").
+**Not verified:** loading such an ODOL on a server. Do not kill leftover Wine processes with `pkill -f binarize...` from a shell whose own command line
 contains that text; it kills your shell. On Windows, armake2 finds the exe itself through the registry key
 `HKCU\Software\Bohemia Interactive\binarize` (`path` = folder with `binarize_x64.exe`) and `build` binarizes
 `.p3d`/`.rtm` in one go (not tested here).
+
+### Checking armake2 against BI's own tools (Proton)
+
+When armake2 output is in doubt, run the same input through DayZ Tools in a sandbox set up as above (copy the tool
+folder, e.g. `Bin/CfgConvert` or `Bin/DsUtils`, into `$W`; `cd` into it; `Z:` confined to `$W`). Tested 2026-10-31, Proton Hotfix:
+
+```sh
+proton run ./CfgConvert.exe -bin -dst 'Z:\out\x.bin' 'Z:\in\x.cpp'   # then: armake2 derapify $W/out/x.bin
+proton run cmd /c 'DSSignFile.exe Z:\k\Name.biprivatekey Z:\p\x.pbo > Z:\out\log.txt 2>&1'
+proton run cmd /c 'DSCheckSignatures.exe -deep Z:\p Z:\k > Z:\out\log.txt 2>&1'
+```
+
+- The DS tools print nothing on Proton's console. Redirect through `cmd /c … > file` to see their output.
+- Compare CfgConvert and armake2 output **after `derapify`**, not byte for byte: CfgConvert writes a 4-byte offset
+  after every class body and armake2 does not. The decoded configs are identical, and the game loads both.
+- A PBO edited by hand needs its SHA-1 trailer recomputed (`\0` + `sha1(everything before it)`), or DSSignFile
+  fails with "Stored and calculated hash don't match".
+
+### Known armake2 config/PBO bugs (fork 782396e, compared with CfgConvert 2026-10-31)
+
+Fix plan: `docs/superpowers/plans/2026-10-31-upstream-issues-dayz.md` in the armake2 repo. Until it lands:
+
+- **Unquoted string values** (`simulation = inventoryItem;`): armake2 reads the rest of the file into the
+  string and rapify fails. CfgConvert ends the value at `;`, `}` or a newline. Quote every string value.
+- **Already-rapified `.rvmat`** (e.g. copied out of vanilla PBOs): `build` fails with a garbled parse error. Derapify it
+  first (`armake2 derapify x.rvmat > x.txt && mv x.txt x.rvmat`).
+- **`#include "x.hpp"  // comment`** on one line fails. Move the comment to its own line.
+- **Include case:** on Linux `#include "inc.hpp"` does not find `Inc.hpp`; CfgConvert (Windows) does. Match the case.
+- **Macro with the wrong argument count** (`QUOTE(a,b)`, `QUOTE([1,2])`) stays unexpanded and armake2 says nothing.
+  CfgConvert silently produces `""`. Both are bugs in the mod; use `ARR_2`-style helpers.
+- **`__EVAL`/`__EXEC`:** CfgConvert evaluates them (`__EVAL(1+2*3)` → `7`). armake2 does not, and a warning on
+  line 1 of a config crashes it. Precompute the values.
+- **Non-UTF-8 file names in a PBO** (cp1252/cp1251, common in third-party mods): `inspect`/`unpack`/`verify`
+  crash. DSSignFile handles them.
 
 `-e product=dayz` (set by the script) goes into the PBO header next to `prefix=`.
 
@@ -154,6 +201,9 @@ contains that text; it kills your shell. On Windows, armake2 finds the exe itsel
 - Default is the **v3** signature. `--v2` writes the older v2 form; use it only if a client or server
   rejects v3 (`build --v2` in the script). v3 was not tested against a real client here.
 - `armake2 verify <Name.bikey> <x.pbo> [x.pbo.Name.bisign]` checks a signature (exit code 0 = valid).
+- Tested 2026-10-31 against DayZ Tools (DsUtils) under Proton: for a PBO with `config.bin`, a `.c` script and an
+  rvmat, the fork's v3 `.bisign` is **byte-identical** to `DSSignFile.exe`'s, and `DSCheckSignatures.exe -deep`
+  reports it OK.
 - Sign **after** the final build; any change to the PBO (even a rebuild with a different timestamp or
   header) invalidates the old `.bisign`. The script always rebuilds and re-signs together.
 - Server owners copy `keys/<Name>.bikey` into the server's `keys/` folder; with `verifySignatures = 2`
