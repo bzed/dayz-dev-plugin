@@ -34,7 +34,12 @@ fork work fine (maintainer-tested). `build --proton-binarize` also converts `.p3
 ```sh
 git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release   # needs libssl-dev
 install -m755 target/release/armake2 ~/.bin/       # any directory in PATH
+# or in one step:  cargo install --git https://github.com/bzed/armake2 --root ~/.local   (binary in ~/.local/bin)
 ```
+
+Build from the fork's current `master` on GitHub. Checked 2026-11-03: `master` at `7dcb3cf`, installed with `cargo install --git`,
+is detected as the fork and keeps texture alpha with `--proton-binarize` (see below). A build from an older checkout may not:
+`armake2 --version` prints `v0.3.0` either way, so when in doubt, reinstall from GitHub.
 
 `dayz-mod-pack.sh` does this check itself: it uses the `armake2` from `PATH` (or `$ARMAKE2`), refuses to run when it is
 upstream, and for `--binarize-models` picks `--proton-binarize` when available.
@@ -107,6 +112,41 @@ power-of-two sizes). Use `--no-bin` (`armake2 pack`) to ship `config.cpp` untouc
 debugging a rapify problem. A `$NOBIN$` or `$NOBIN-NOTEST$` file in an addon folder disables
 binarization for that addon only.
 
+### DayZ Tools under Proton: link the game data into the tools prefix
+
+DayZ Tools (Steam app 830640) and the game (221100, or 1024020 for Experimental) are separate Steam apps, so each runs in its
+own Wine prefix under `steamapps/compatdata/<appid>/pfx`. The tools themselves run fine under Proton; AddonBuilder packs
+without problems (maintainer-tested). What fails is any tool step that needs **game data** (vanilla `dz\...` textures, configs and models,
+for example binarizing a model that references vanilla textures, or tools that look up the game install), because
+the tools prefix does not know where the game is. Link the game into that prefix before blaming the tool.
+
+State observed on the maintainer's machine (2026-11-03):
+
+| | game prefix `compatdata/221100` | tools prefix `compatdata/830640` |
+|---|---|---|
+| `HKLM\Software\Wow6432Node\Bohemia Interactive\DayZ` | `"main"="S:\steamapps\common\DayZ"` | key exists, **no `main` value** |
+| drives (`pfx/dosdevices`) | `c:`, `z:` → `/` | `c:`, `z:` → `/`, `s:` → Steam root, no `p:` |
+
+What the link involves:
+- the `main` value in the tools prefix pointing at the game install (through `s:` or `z:`)
+- a `p:` with the game data the tool resolves, i.e. an extracted `dz\...` tree next to your own addon prefix (see the binarize recipe below)
+
+Re-tested 2026-11-03 (Proton Hotfix, DayZ Tools build 26405911) in fresh throwaway prefixes. Besides the two items above, a
+prefix that Steam never launched lacks what Steam does on a tool's first launch: the `Registry` entries of
+`DayZ Tools/installscript.vdf` (without them TexView stops at "Missing registry entry
+HKEY_LOCAL_MACHINE/Software\BIStudio\TextureConvert") and the VC++ runtime from `Steamworks Shared/_CommonRedist/vcredist`
+(Object Builder does not start without `mfc140.dll`). Also measured: the 32-bit tools need `PROTON_USE_WOW64=1` when the host
+has no i386 FreeType (dialogs without text otherwise); the first .NET tool started in a fresh prefix never finishes (later
+starts work); a prefix's wineserver is bound to one display (a tool started on another display dies with `X Error … BadWindow`);
+AddonBuilder exits 0 on a failed build (the result is `[ResultCode]` in `DayZ Tools/Bin/Logs/AddonBuilder.rpt`). With those
+handled, ImageToPAA, CfgConvert, the DS tools, AddonBuilder (also full builds), binarize, TexView, Object Builder, Workbench
+and DayZDiag (client and `-server`) ran. The DayZ Modding Knowledge Pack ships a runner that does all of this in private
+prefixes: `skills/_shared/scripts/dayz-proton.sh` (`init <P-dir>`, then `tool`/`gui`/`binarize`/`headless`), with the measured
+matrix in `skills/_shared/linux-proton.md`. Still prefer armake2 for building and signing.
+
+Never edit or write into the Steam install directories themselves. A throwaway prefix
+(`STEAM_COMPAT_DATA_PATH` in `/tmp` or `/var/tmp`, as in the recipe below) keeps experiments out of the real tools prefix.
+
 ### `binarize.exe` under Proton: works if Wine's `Z:` drive is tiny
 
 `dayz-mod-pack.sh build --binarize-models` passes `--proton-binarize` to armake2, which does the recipe below itself: it creates a
@@ -114,16 +154,16 @@ temporary sandbox and Wine prefix (first run takes a while), converts every `.p3
 MLOD), builds and signs, and deletes the sandbox. It finds DayZ Tools and Proton under the Steam root (override with
 `STEAM_ROOT`, `DAYZ_TOOLS`, `PROTON`) and fails with the binarize log if a model does not convert.
 
-**Known bug (fork 782396e, upstream #21): `--proton-binarize` loses texture alpha.** binarize.exe resolves face
-texture paths (`mymod\data\glass_ca.paa`) **relative to its current directory**. BI's tools run it from `P:\`, while
-armake2 copies only the `.p3d` into the sandbox and runs it from the `Binarize` folder, so no texture is found
-and no error is printed. Tested 2026-10-31 (binarize 1.30.164200.56, Proton Hotfix) with a two-triangle MLOD
-textured with a DXT5 `_ca.paa`: from a `P:` root the ODOL model and section flags are `0x802020`
-(IsAlpha|IsTransparent|IsAlphaFog), and through armake2 they are `0`. The rest of the file is byte-identical.
-Upstream reports this as alpha faces (glass, sights, foliage) rendering opaque; that was not checked in game here.
-Models without alpha textures are not affected. Until the fork is fixed, binarize models with alpha
-textures by hand with the `P:` recipe below, put the ODOL into the source tree as `model.p3d`, and build
-without `--proton-binarize` (which copies `.p3d` files unchanged).
+**Texture alpha: fixed in the fork since `0a0ce3b` (upstream #21).** binarize.exe resolves face texture paths
+(`mymod\data\glass_ca.paa`) **relative to its current directory**, and BI's tools run it from `P:\`. Fork builds before
+`0a0ce3b` copied only the `.p3d` into the sandbox and ran binarize from the `Binarize` folder, so no texture was found and no
+error was printed: the ODOL's section flags lost `0x802020` (IsAlpha|IsTransparent|IsAlphaFog) and the face colour fell
+back to the not-found default (measured 2026-10-31, binarize 1.30.164200.56). `0a0ce3b` runs binarize from a `P:` root with
+the addon mapped. Verified 2026-11-03 (binarize 1.30.164289.70, Proton Hotfix, a cube textured with a DXT5 `_ca.paa`): a fork
+build from HEAD `7dcb3cf` gives output **byte-identical** to binarize run by hand from a `P:` root, and to AddonBuilder's binarized
+model; an older build still differed in 20 bytes. `armake2 --version` prints `v0.3.0` for both, so the version does not tell
+them apart: if in doubt, rebuild the fork from source, or binarize one textured model both ways and `cmp` the results.
+Not checked in game.
 
 Upstream armake2 only calls BI's `binarize.exe` (DayZ Tools, Steam app 830640) on Windows, so on Linux `.p3d`/`.rtm`
 stay MLOD; the bzed fork adds `build --proton-binarize` (Linux, opt-in). Running the exe yourself under Proton works, with one trap. Wine maps `Z:` to `/`, and Binarize
@@ -173,22 +213,27 @@ proton run cmd /c 'DSCheckSignatures.exe -deep Z:\p Z:\k > Z:\out\log.txt 2>&1'
 - A PBO edited by hand needs its SHA-1 trailer recomputed (`\0` + `sha1(everything before it)`), or DSSignFile
   fails with "Stored and calculated hash don't match".
 
-### Known armake2 config/PBO bugs (fork 782396e, compared with CfgConvert 2026-10-31)
+### armake2 config/PBO bugs found against CfgConvert (2026-10-31): fixed in the fork's `master`
 
-Fix plan: `docs/superpowers/plans/2026-10-31-upstream-issues-dayz.md` in the armake2 repo. Until it lands:
+Found with fork `782396e` against CfgConvert on 2026-10-31. Each has a fix commit in the fork, and each was re-tested
+on 2026-11-03 with `master` (`7dcb3cf`) installed from GitHub (`cargo install --git https://github.com/bzed/armake2`):
 
-- **Unquoted string values** (`simulation = inventoryItem;`): armake2 reads the rest of the file into the
-  string and rapify fails. CfgConvert ends the value at `;`, `}` or a newline. Quote every string value.
-- **Already-rapified `.rvmat`** (e.g. copied out of vanilla PBOs): `build` fails with a garbled parse error. Derapify it
-  first (`armake2 derapify x.rvmat > x.txt && mv x.txt x.rvmat`).
-- **`#include "x.hpp"  // comment`** on one line fails. Move the comment to its own line.
-- **Include case:** on Linux `#include "inc.hpp"` does not find `Inc.hpp`; CfgConvert (Windows) does. Match the case.
-- **Macro with the wrong argument count** (`QUOTE(a,b)`, `QUOTE([1,2])`) stays unexpanded and armake2 says nothing.
-  CfgConvert silently produces `""`. Both are bugs in the mod; use `ARR_2`-style helpers.
-- **`__EVAL`/`__EXEC`:** CfgConvert evaluates them (`__EVAL(1+2*3)` → `7`). armake2 does not, and a warning on
-  line 1 of a config crashes it. Precompute the values.
-- **Non-UTF-8 file names in a PBO** (cp1252/cp1251, common in third-party mods): `inspect`/`unpack`/`verify`
-  crash. DSSignFile handles them.
+| Was | Now (re-tested) | Fix |
+|---|---|---|
+| unquoted string value (`simulation = inventoryItem;`) swallowed the rest of the file | ends at `;`, `}` or newline, like CfgConvert | `bcb2244` |
+| already-rapified `.rvmat` failed `build` | passed through | `ae05ebd` |
+| `#include "x.hpp"  // comment` failed | accepted | `45379fd` |
+| `#include "inc.hpp"` did not find `Inc.hpp` on Linux | case-insensitive fallback | `d24b0c1` |
+| macro with the wrong argument count stayed unexpanded, silently | warning, expands to `""` like CfgConvert | `563b944`, `ec58d08` |
+| `__EVAL`/`__EXEC` not evaluated; a warning on line 1 crashed | `__EVAL(1+2*3)` → `7` | `f6465e9`, `b928152` |
+| non-UTF-8 (cp1252) entry names: `inspect`/`unpack` crashed | warning, extracted as windows-1252 | `698cfcf`, `173319f` |
+
+An older local build still has these bugs, and `--version` prints `v0.3.0` for every build: reinstall from GitHub.
+
+**Still open (found 2026-11-03):** `armake2 pack` of a source folder that holds a file whose *Linux* name is not valid
+UTF-8 (e.g. `caf\xe9.txt`) exits without an error and writes a PBO that `inspect` and `unpack` refuse with
+`Failed to read PBO: failed to fill whole buffer`. Rename such files to UTF-8 before packing. (A PBO extracted by armake2
+itself writes UTF-8 names, so this mostly hits trees extracted by other tools.)
 
 `-e product=dayz` (set by the script) goes into the PBO header next to `prefix=`.
 

@@ -191,6 +191,7 @@ section of `testing/client-testing.md`).
 - **bzed's armake2 fork is required, upstream armake2 will not do.** armake2 must be https://github.com/bzed/armake2 (upstream leaves `*.c` scripts out of
   the signature hash, so signed script mods fail on servers). Look in `$PATH` first and check `armake2 -h 2>&1 | grep -- --proton-binarize`: a hit = the fork (it also binarizes models on Linux). If it is missing or is upstream, tell the user and have them install the fork.
   The uploader is the upstream https://github.com/nozwock/steam-workshop-uploader (it supports DayZ and maintains `meta.cpp`); no fork needed.
+- **DayZ Tools under Proton work, AddonBuilder included**. Tools and game are separate Steam apps with separate Wine prefixes, so any tool step that needs game data needs the game linked into the tools prefix (`main` registry value, `P:` with game data). See `systems/mod-packaging.md`, "DayZ Tools under Proton". Do not conclude "DayZ Tools don't work on Linux".
 - The private key lives in a git-ignored `secrets/`, never in the content folder; never overwrite an existing key.
 - Workshop tags: exactly one type tag, `Mod` or `Server` (`Server` = servermods only, never both), plus any number of content tags (Animation, Character, Economy, Environment, Equipment, Mechanics, Sound, Props, Terrain, Vehicle, Weapon). `mod.cpp` is optional; a mod works without it. Plain `build` rapifies configs only; models need `--binarize-models`.
 - Uploading to Steam is the user's call: print the `workshop` command with `publish-hint`, never run it unprompted.
