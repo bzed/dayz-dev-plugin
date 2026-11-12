@@ -2,7 +2,7 @@
 # Extract the code files (scripts, configs) of the installed vanilla game PBOs with armake2.
 #
 # usage: extract-dayz-sources.sh <DayZ-install-dir | mod-dir> <out-dir>
-#   e.g. extract-dayz-sources.sh ~/.steam/debian-installation/steamapps/common/DayZ /tmp/dayz-sources
+#   e.g. extract-dayz-sources.sh ~/.steam/debian-installation/steamapps/common/DayZ /var/tmp/dayz-sources
 #   a Workshop mod dir (steamapps/workshop/content/221100/<id>, with an addons/ folder) works the same way
 #
 # Searches <install>/dta and <install>/Addons plus the DLC folders <install>/*/addons (case-insensitive).
@@ -12,14 +12,14 @@
 # e.g. prefix "scripts" -> <out>/scripts/3_Game/..., prefix "DZ\AI" -> <out>/DZ/AI/config.cpp.
 # <out>/pbo-map.tsv lists "<prefix>\t<pbo path relative to the install dir>" for every PBO that yielded files
 # (scripts/build-api-index.py reads it to tell `dayz-api.py src` which PBO holds a file).
-# Needs armake2 on PATH. Write <out-dir> below /tmp or /var/tmp, not below $HOME.
+# Needs armake2 on PATH. Write <out-dir> below /var/tmp (/tmp can be a tmpfs and take up RAM), not below $HOME.
 set -eu
 [ $# -eq 2 ] || { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 install=$1 out=$2
 command -v armake2 >/dev/null || { echo "armake2 not found on PATH" >&2; exit 1; }
 [ -d "$install" ] || { echo "$install is not a directory" >&2; exit 1; }
 mkdir -p "$out"
-tmp=$(mktemp -d /tmp/dayz-extract.XXXXXX)
+tmp=$(mktemp -d /var/tmp/dayz-extract.XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
 
 find "$install" -maxdepth 2 -type d \( -name dta -o -iname addons \) -print0 | sort -z |

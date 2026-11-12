@@ -32,7 +32,7 @@ done
 tree=$(cd "$tree" && pwd -P)
 # One game at a time: check before spending a server start on a client that would be refused.
 "$here/dayz-client-headless.sh" status >&2 || { echo "stop the running DayZ client first (one game at a time)" >&2; exit 1; }
-[ -n "$out" ] || out=$(mktemp -d /tmp/dzct.XXXXXX)
+[ -n "$out" ] || out=$(mktemp -d /var/tmp/dzct.XXXXXX)
 mkdir -p "$out"
 
 set -- $("$here/free-ports.sh" 2)

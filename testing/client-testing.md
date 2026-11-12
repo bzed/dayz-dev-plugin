@@ -40,9 +40,9 @@ launches the game inside it. Nothing appears on your desktop. **(tested)**
 
 ```sh
 S="${CLAUDE_SKILL_DIR}/scripts/dayz-client-headless.sh"
-$S start /tmp/dzc -name=autotest "-mod=@9dd22c91;@MyMod" -connect=127.0.0.1 -port=$GAME
-$S shot  /tmp/dzc /tmp/dzc/now.png      # screenshot of the headless output, read it with an image viewer
-$S stop  /tmp/dzc                       # ends sway, which ends the game
+$S start /var/tmp/dzc -name=autotest "-mod=@9dd22c91;@MyMod" -connect=127.0.0.1 -port=$GAME
+$S shot  /var/tmp/dzc /var/tmp/dzc/now.png      # screenshot of the headless output, read it with an image viewer
+$S stop  /var/tmp/dzc                       # ends sway, which ends the game
 ```
 
 **Why not `steam -applaunch 221100 ...`?** Steam is a single instance per user, so the command hands the
@@ -240,13 +240,13 @@ in godmode (`player.SetAllowDamage(false)`, server side) as soon as it is schedu
 `DONE` line, collecting the `[AUTOTEST]` lines, a final screenshot, and teardown. **(tested)**
 
 ```sh
-"${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh" -t "$TREE" -s "@AutoTest" -c "@AutoTest" -o /tmp/run1
+"${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh" -t "$TREE" -s "@AutoTest" -c "@AutoTest" -o /var/tmp/run1
 # [AUTOTEST] PASS client_has_player local player SurvivorM_Rolf
 # [AUTOTEST] PASS server_item_synced Chemlight_Red replicated to the client
 # [AUTOTEST] PASS godmode_blocks_damage  | server: health 100 -> 100
 # [AUTOTEST] PASS damage_when_needed  | server: health 100 -> 95
 # [AUTOTEST] DONE passed=4 failed=0
-# artifacts: /tmp/run1 (server.log, final.png; server script log: ...)
+# artifacts: /var/tmp/run1 (server.log, final.png; server script log: ...)
 ```
 
 Exit status 0 means `DONE` was seen and there was no `FAIL`; 1 means a failure or a timeout (default 300 s;
@@ -275,7 +275,7 @@ client directory. The mod is an example: do not install its key on a real server
   through the sway window (`swaymsg -t get_tree`, field `pid`) or just `stop` the session. **(tested)**
 - A mod-tree path that is too long breaks the server's persistence:
   `File path exceeds max filename length. (291 > 280)`, and `spawnpoints.bin` is not written. Keep the server
-  tree in a short directory (`/tmp/dzt`), not under a deep project path. **(tested)**
+  tree in a short directory (`/var/tmp/dzt`), not under a deep project path. **(tested)**
 - `pkill -f DayZ_x64.exe` kills the shell running it, same as with the server (it did, exit 144). Use PIDs
   or `stop`. **(tested)**
 - Other DayZ servers on the machine are not yours; check `ps` args before stopping anything by name.
@@ -309,8 +309,8 @@ MODS='@CF;@DabsFramework;@DayZ-Expansion-Licensed;@DayZ-Expansion-Bundle'
 # run 1: start the server (cd "$TREE" && ./DayZServer -config=serverDZ.cfg -profiles=profiles "-mod=$MODS" -port=$GAME ...),
 # wait for 'CREATED -> CONNECTED' in its output, stop it; then apply steps 3-4 above (SpawnSettings.json, players.db)
 # run 2: start it again, wait for it, then start the client with the client-side folder names of the same mods:
-$S/dayz-client-headless.sh start /tmp/dzc -name=shot "-mod=@9dd22c91;@1bbd85f5;@0891b3df;@829b91b4" -connect=127.0.0.1 -port=$GAME
-# wait for 'is connected' in profiles/*.ADM, ~45 s more, then: dayz-client-headless.sh shot /tmp/dzc /tmp/dzc/now.png; stop
+$S/dayz-client-headless.sh start /var/tmp/dzc -name=shot "-mod=@9dd22c91;@1bbd85f5;@0891b3df;@829b91b4" -connect=127.0.0.1 -port=$GAME
+# wait for 'is connected' in profiles/*.ADM, ~45 s more, then: dayz-client-headless.sh shot /var/tmp/dzc /var/tmp/dzc/now.png; stop
 ```
 
 The `@xxxxxxxx` client folder names are per machine (`@9dd22c91` is CF here); find them with
