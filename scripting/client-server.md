@@ -19,6 +19,18 @@ DayZ scripts are organized into three modules with strict access rules:
 - `4_World/` scripts are available in world and mission contexts
 - `5_Mission/` scripts are only available in mission context
 
+## Modded Class Chain and Load Order
+
+`modded class Foo` blocks from several addons stack into a chain in addon compile order.
+That order follows `requiredAddons` dependency resolution - NOT the `-mod=`/`-servermod=`
+string order (a servermod requiring `DayZExpansion_Vehicles_Scripts` compiles immediately
+after that addon, wherever it sits in the `-servermod` string; tested). Never rely on being
+first or last ("outermost") in the chain. To counteract another mod's behaviour, hook an
+event that provably runs after it (e.g. `EEInit()` runs after the constructor chain, so it
+beats a constructor-time `SetAllowDamage(false)` from any position) and identify targets by
+data (class-name prefix, config flags), not by call order. Details: `best-practices.md`,
+Modded Class Injection.
+
 ## Server vs Client Detection
 
 ### During Runtime (After Init)

@@ -83,7 +83,8 @@ TREE=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test)
 TREE_EXP=$("${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh" /var/tmp/dayz-test-exp "$("${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh" -e)")
 ```
 
-- One tree per server. They may run at the same time (separate trees, separate random ports), and the
+- One tree per server. They may run at the same time (separate trees, separate random ports;
+  but one at a time by default - see the RAM note in section 2), and the
   same mod build can be symlinked into both.
 - The experimental install dir contains a space (`DayZ Server Exp`): always quote it.
 - Experimental is a diag build (`DEVELOPER`, `DIAG_DEVELOPER`, `BUILD_EXPERIMENTAL` in the defines line).
@@ -151,6 +152,12 @@ be shared, and its `storage_1/` is the other lock. Sequential runs may reuse one
 Keep `-profiles=profiles` (the tree's own folder) so every run's logs stay in its tree. Since 1.30.164200 (build 25963285)
 an absolute `-profiles=` outside the tree works too (tested). On older 1.30 builds it did not: the `FindFile` workaround in CF/COT
 and in `compatibility/YOURMOD_FindFilePath.c` only found a profile folder inside the server executable's folder.
+
+**Run the trees one at a time anyway.** A 1.30 server with the Expansion bundle uses ~7.5 GB
+RSS, so an A/B pair - plus unnoticed leftovers (see "Listing and stopping test servers") -
+can push a 60 GB machine to its limit. A boot is ~2 minutes, so serializing costs little:
+stop one server (by PID) before starting the next, and check `free -h` first if two must
+genuinely overlap.
 
 ### Never leave a port at its default
 
@@ -253,12 +260,22 @@ Entity will not be loaded correctly.
 The affected entities are not loaded correctly. The server kept running, so a boot that "works" is not proof the storage is fine:
 grep the log for `Scripted variables corrupted`.
 
-**Adding CF: not reproduced here.** An attempt to produce the error on DayZ 1.29.163709 (not retried on 1.30) did not show it: a tree run
-vanilla (storage 3.3 MB), then with a real player saved by a vanilla client (6.5 MB), then booted with
-the installed CF (Workshop 1559212036) and the same player reconnecting with CF on the client. The server's
-script log and RPT and the client's script log stayed clean. Mods that persist their own item,
-vehicle or tent state were not tried, and are the likely trigger. The "adding" half of the rule is therefore reported, not
-verified by us; if you capture the actual error text, add it here.
+**Adding CF (tested, 1.30):** booting a tree that had already run without CF, now with CF
+in the mod set and the old `storage_1` still in place, killed the boot in `script_*.log` with
+
+```
+Unknown type 'CF_Trace'
+Can't compile "Engine" script module
+```
+
+Note how misleading that is: it reads like a CF/Expansion version conflict, not like stale
+storage, and sends the debugging down a version-compatibility rabbit hole. Rebuilding the
+trees fresh with their final mod sets (so no CF state ever changed mid-tree) booted
+immediately. When a CF-state change coincides with "version conflict" compile errors, wipe
+the storage (or rebuild the tree) before debugging versions. (An earlier attempt to
+reproduce this on 1.29.163709 - vanilla storage, a real player saved by a vanilla client,
+then CF added - did not show it; mods that persist their own item, vehicle or tent state
+remain the likely trigger. If you capture the exact conditions, add them here.)
 
 ## 3. Run it headless
 
@@ -285,7 +302,8 @@ Launch rules:
     process can hang forever in Steam API threads, and only the follow-up SIGKILL ends it.
 - **Don't `pkill -f DayZServer` in the same command line.** The pattern matches the shell
   running the pkill. Use the PID, or `timeout`. The process shows up as `enfMain` in `ps`, not
-  `DayZServer`.
+  `DayZServer`, so `pkill`/`pgrep -x DayZServer` never match it either - see the next
+  subsection before killing or counting anything.
 - **Never use the default ports.** Pass `-port=$GAME` from `free-ports.sh` and set the query and
   RCon ports in the tree too (see above). A fixed "spare" port such as 2402 works for one run
   and fails the moment a second server or a leftover process is around.
@@ -293,6 +311,26 @@ Launch rules:
   `mpmissions/`; build a second tree instead.
 - **`-mod=`** is for mods the client must load too. A headless test still only proves the
   server side.
+
+### Listing and stopping test servers
+
+`pkill -x DayZServer` and `pgrep -x DayZServer` do not match a running Linux server: it
+changes its process name after start (the comm column shows `enfMain`), and their silent
+no-match is indistinguishable from "nothing running" - while several 7.5 GB servers keep
+going (tested, 1.30.164289). Match the command line instead, and kill by PID:
+
+```sh
+ps aux | grep "[D]ayZServer"    # the [D] keeps the grep itself out of the list
+kill <pid>
+```
+
+- Never `pkill -f DayZServer` in the same command line: the pattern also matches the shell
+  running it (it kills itself, exit 144).
+- A server started as a background child of a harness/agent shell can be reaped when that
+  shell completes. Start a server that must outlive the tool call with
+  `setsid nohup ./DayZServer ... >server.log 2>&1 &` and remember its PID.
+- Other DayZ servers on the machine are not yours: check the `ps` arguments (tree path,
+  ports) before killing anything by PID.
 
 ## 4. Read the result
 
@@ -314,6 +352,9 @@ bug in your code. Details and a chunking helper: `scripting/enforce-script.md`, 
    loaded**, even though the server started fine and printed no error.
 
    Common silent causes:
+   - a PBO at the mod folder root instead of inside `addons/` (`@MyMod/MyMod.pbo`): the
+     engine silently ignores it while the folder still shows in the ANIMATION pass - that
+     is not loading (tested; see `systems/mod-structure.md`);
    - an absolute mod path;
    - on 1.30: backslashes in the `CfgMods` script module paths (`files[] = {"MyMod\scripts\4_World"}`). 1.29
      loaded them; 1.30 ignores them without an error. Use forward slashes (`compatibility/version-130.md` section 2);
@@ -323,6 +364,10 @@ bug in your code. Details and a chunking helper: `scripting/enforce-script.md`, 
    - file names inside the PBO that repeat the prefix (`MyMod/config.cpp` under prefix `MyMod` becomes
      `MyMod\MyMod\config.cpp`). Pack from inside the addon folder:
      `cd build/MyMod && pbo -H prefix=MyMod ../../@MyMod/addons/MyMod.pbo $(find . -type f | sed 's|^\./||')`.
+
+   Decisive probe when a `modded class`/`override` silently does nothing: put a deliberate
+   syntax error in one of the mod's scripts and boot once. A clean boot means the file was
+   never compiled - the mod is not loading at all; a compile error means it is (tested).
 2. **Did they compile?** `SCRIPT    (E)` lines are compile errors. The tag is space-padded, so
    grepping for the literal `SCRIPT (E)` never matches.
 3. **Did your code run?** Add a `Print("MyMod: loaded ...")` to a mission or init hook. It is the

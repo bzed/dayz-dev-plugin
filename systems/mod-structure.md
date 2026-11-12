@@ -174,6 +174,19 @@ Mods must be packed into PBO (Packed Bohemia Object) files for deployment:
 
 The PBO is placed in the `Addons/` folder of your mod directory.
 
+**The PBO must sit inside `addons/`, not at the mod folder root.** `@MyMod/addons/MyMod.pbo`
+loads; `@MyMod/MyMod.pbo` is **silently ignored** (tested): the server never reads the PBO's
+config or scripts and prints no error or warning. The folder still appears in the boot log's
+per-addon pass (the `ANIMATION (E): Can't load @MyMod/Anims/...` line), which is NOT evidence
+of loading - a `modded class` override in such a PBO silently never runs. When an override
+does not take effect and there is no compile error, prove the mod's scripts are in the
+compile set before theorising about override chains or API misuse: put a deliberate syntax
+error in one of the mod's scripts and boot once. A clean boot means nothing of the mod is
+compiled (a root-level PBO, a wrong `files[]` path and backslash paths in the `CfgMods`
+defs all produce this same silent no-op); a compile error means the scripts are loading.
+Positive check: the `Module: <module>; loaded Nx files` log lines - your mod's defines
+missing there means its config was never loaded (see `testing/local-server.md` section 4).
+
 ## Script Module Access Rules
 
 | Module | Can Access | Cannot Access |

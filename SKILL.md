@@ -169,7 +169,7 @@ DayZ-Script-Diff commits listed in https://diff.yadz.app/assets/versions.json.
 Experimental, 1042420, only when the user wants to test against the next build). If the server is missing ask the user to
 install it through Steam (no steamcmd unless asked). **Never copy, edit or write anything in the Steam directories**: run from a
 tree made by `${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>` with mods symlinked in and passed as relative `-servermod=`/`-mod=`
-paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran whenever CF is added or removed** (CF changes how data is stored; storage written with a different CF state gives storage errors, e.g. `Scripted variables corrupted` after removing CF; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
+paths. **Wipe `mpmissions/*/storage_1` of a tree that already ran whenever CF is added or removed** (CF changes how data is stored; storage written with a different CF state gives storage errors - `Scripted variables corrupted` after removing CF, or, when adding CF, misleading script compile errors like `Unknown type 'CF_Trace'` / `Can't compile "Engine" script module` that read like a CF/Expansion version conflict; see `testing/local-server.md`). **Never run two servers on one tree** (they lock and corrupt `profiles/`/`mpmissions/`). **Never leave game, Steam query or
 RCon ports at the default**: use `${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3`. A PBO that builds is not a tested mod: boot it and
 compare script module counts with vanilla.
 
@@ -177,8 +177,8 @@ compare script module counts with vanilla.
 read `testing/client-testing.md`. `${CLAUDE_SKILL_DIR}/scripts/dayz-client-test.sh` starts a server and a headless client and returns
 the mod's `[AUTOTEST]` results; the example harness is `testing/autotest-mod/`. It needs the user's running Steam, and the one write it
 makes outside the tree is a symlink to the test mod in the client's `steamapps/common/DayZ` (clients only load `@mod` folders from
-there); remove it afterwards. Never `steam -applaunch` for this: it opens the game on the user's desktop. **One game at a time** (servers:
-as many as needed): run `dayz-client-headless.sh status` first, never kill a game you did not start, and stop yours as soon as you
+there); remove it afterwards. Never `steam -applaunch` for this: it opens the game on the user's desktop. **One game at a time**
+(test servers too: one at a time by default, ~7.5 GB RAM each - see `testing/local-server.md`): run `dayz-client-headless.sh status` first, never kill a game you did not start, and stop yours as soon as you
 have the logs/screenshots. The experimental client has no Workshop: the mods come from stable (`-e` flag, `DayZ Exp` dir; see the Experimental
 section of `testing/client-testing.md`).
 

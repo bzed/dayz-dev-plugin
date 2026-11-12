@@ -99,6 +99,20 @@ modded class PlayerBase
 }
 ```
 
+**Load order is not the `-mod` list order.** Addon compile order follows `requiredAddons`
+dependency resolution, not the `-mod=`/`-servermod=` string order, and a `-servermod` addon
+compiles right after the addon its `requiredAddons[]` names - not after every `-mod` addon
+(tested: a servermod requiring `DayZExpansion_Vehicles_Scripts` compiled immediately after
+that addon, at a position unrelated to its place in the `-servermod` string). No position in
+the `modded class` chain can be relied on. Never build a fix on being "outermost"; make it
+order-independent:
+
+- **Hook an event that provably runs after the behaviour you counteract.** `EEInit()` runs
+  after the constructor chain, so a re-enable there beats a constructor-time
+  `SetAllowDamage(false)` from any chain position.
+- **Identify targets by data** (class-name prefix, config flags), not by assuming which
+  mod called what first.
+
 ### RPC Communication (Vanilla)
 ```c
 // Server -> Client
