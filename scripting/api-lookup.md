@@ -13,7 +13,7 @@ dayz-api.py find 'UpdateLights' -c CarScript   # member lines matching a regex, 
 dayz-api.py find 'OnCEUpdate'             # across all classes (also enum values and top-level decls)
 dayz-api.py sub Weapon_Base [--all]       # subclasses
 dayz-api.py enum EStatLevels              # enum values
-dayz-api.py src PlayerBase              # declaring script file(s), ready for armake2 cat
+dayz-api.py src PlayerBase              # declaring script file(s), ready for dayzmake cat
 dayz-api.py chain PlayerBase              # PlayerBase > ManBase > DayZPlayerImplement > ...
 ```
 Format: `CLASS Name<T> : Base @layers` (1=1_Core .. 5=5_Mission, layers that declare it; the index stores the declaring files, shown by `src`), then members as
@@ -37,24 +37,24 @@ dayz-api.py class ExpansionMarketModule -m expansion      # one Expansion class;
 dayz-api.py class PlayerBase -m expansion --mods-only     # only what Expansion adds to vanilla PlayerBase (modded parts)
 dayz-api.py find 'RegisterRPC|OnRPC' -m cf,cot            # across CF and COT
 dayz-api.py defines MARKET                                # #ifdef defines: EXPANSIONMODMARKET, CF_MODULES, ... (CfgMods defines[])
-dayz-api.py src ActionBase -m expansion                   # pbo + inner path per declaring file, for `armake2 cat`
+dayz-api.py src ActionBase -m expansion                   # pbo + inner path per declaring file, for `dayzmake cat`
 ```
 - A mod's `modded class X` shows as its own `[mod] CLASS X ... [modded]` block next to the vanilla `[vanilla] CLASS X`; `[modded]`
   means the mod does not declare the class itself. Members of all #ifdef branches are merged, so check `defines` before
   relying on a branch. The hits are signatures of the indexed version only; mods change, and a server may run another version.
 - `class X --inherited` follows the base chain through every loaded index; load the mod that holds the base (Expansion
   classes extend CF classes, so use `-m expansion,cf`), otherwise the chain stops at the first class outside the loaded set.
-- `src` prints the pbo (relative to the mod's Workshop dir) and inner path; `armake2 cat <mod dir>/addons/market_scripts.pbo '<inner path>'` prints the file.
+- `src` prints the pbo (relative to the mod's Workshop dir) and inner path; `dayzmake cat <mod dir>/addons/market_scripts.pbo '<inner path>'` prints the file.
 - Regenerate after a mod update: extract fresh into a new `/tmp` dir, then
   `python3 scripts/build-api-index.py <extract-dir> api --mod expansion --build "DayZ-Expansion-Bundle <ver> (workshop 2572331007, updated <date>)"`.
 
 ## Extracting the real sources (when the index is not enough)
 For one class, do not extract everything: `dayz-api.py src X` gives the declaring file(s), all inside
-`<install>/dta/scripts.pbo`, and `armake2 cat <install>/dta/scripts.pbo '4_World\Entities\ItemBase.c'` prints that
+`<install>/dta/scripts.pbo`, and `dayzmake cat <install>/dta/scripts.pbo '4_World\Entities\ItemBase.c'` prints that
 file (**tested**, build 25963285). Use the full extraction below when you need many files or `grep` across the code.
 
 Method bodies and non-vanilla code are not in the index. Extract them from the installed PBOs with
-`scripts/extract-dayz-sources.sh <install-or-mod-dir> <out-dir>` (needs armake2 on PATH; put `<out-dir>` under
+`scripts/extract-dayz-sources.sh <install-or-mod-dir> <out-dir>` (needs dayzmake on PATH; put `<out-dir>` under
 `/tmp` or `/var/tmp`). It reads only code, never models or textures: `*.c *.cpp *.h *.hpp *.inc *.json *.cfg *.txt`,
 plus every `config.bin` derapified to `config.cpp`. Output follows the PBO prefix, so `scripts.pbo` becomes
 `<out>/scripts/{1_Core..5_Mission}` and `Addons/ai.pbo` (prefix `DZ\AI`) becomes `<out>/DZ/AI/config.cpp`.
@@ -71,8 +71,8 @@ Where the PBOs live (Steam on Linux; the install is `steamapps/common/DayZ`):
 | Workshop mods | `steamapps/workshop/content/221100/<workshop-id>/addons/*.pbo`; the `@xxxxxxxx` entries in the install dir are symlinks to them |
 Do not follow the `@...` symlinks when scanning the install dir (the script uses `find` without `-L`, so mods are
 skipped there). Extract a mod by passing its workshop folder instead. Encrypted `.ebo` files cannot be unpacked.
-Single files without extracting: `armake2 inspect <pbo>` lists files, `armake2 cat <pbo> 'dir\file.c'` prints one
-(backslash in the inner path). Installed armake2 0.3.0 has no `-x` on `unpack`, hence the per-file `cat`.
+Single files without extracting: `dayzmake inspect <pbo>` lists files, `dayzmake cat <pbo> 'dir\file.c'` prints one
+(backslash in the inner path). dayzmake 1.0.0 has no `-x` on `unpack` (checked 2026-11-13), hence the per-file `cat`.
 After extracting a new stable build, regenerate the index (see above).
 
 ## Verification Sources

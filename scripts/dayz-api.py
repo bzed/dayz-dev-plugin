@@ -5,7 +5,7 @@
   dayz-api.py find REGEX [-c CLASS]      member lines matching REGEX (case-insensitive), with their class
   dayz-api.py sub NAME [--all]           classes extending NAME (--all: transitively)
   dayz-api.py enum NAME                  enum values; `find` also searches enum values and top-level declarations
-  dayz-api.py src NAME                   source files declaring a class/enum, with ready `armake2 cat` commands
+  dayz-api.py src NAME                   source files declaring a class/enum, with ready `dayzmake cat` commands
   dayz-api.py chain NAME                 base class chain
   dayz-api.py defines [REGEX]            #ifdef defines of the indexed mods (e.g. EXPANSIONMODMARKET, CF_MODULES)
 
@@ -128,7 +128,7 @@ def main():
             sys.exit(f'no class or enum {a.arg!r}{hint}')
         for b in bl:
             if b['mod'] == 'vanilla':
-                out.append('pbo: <DayZ install>/dta/scripts.pbo  (print one file: armake2 cat <pbo> \'<path>\')')
+                out.append('pbo: <DayZ install>/dta/scripts.pbo  (print one file: dayzmake cat <pbo> \'<path>\')')
             else:
                 out.append(f"[{b['mod']}] pbo: <mod dir>/<pbo> as listed; mod dir = steamapps/workshop/content/221100/<id> ({info[b['mod']]['title']})")
             for l, mid, pth in files_of(b['head']):

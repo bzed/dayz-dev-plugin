@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Extract the code files (scripts, configs) of the installed vanilla game PBOs with armake2.
+# Extract the code files (scripts, configs) of the installed vanilla game PBOs with dayzmake.
 #
 # usage: extract-dayz-sources.sh <DayZ-install-dir | mod-dir> <out-dir>
 #   e.g. extract-dayz-sources.sh ~/.steam/debian-installation/steamapps/common/DayZ /var/tmp/dayz-sources
@@ -12,11 +12,21 @@
 # e.g. prefix "scripts" -> <out>/scripts/3_Game/..., prefix "DZ\AI" -> <out>/DZ/AI/config.cpp.
 # <out>/pbo-map.tsv lists "<prefix>\t<pbo path relative to the install dir>" for every PBO that yielded files
 # (scripts/build-api-index.py reads it to tell `dayz-api.py src` which PBO holds a file).
-# Needs armake2 on PATH. Write <out-dir> below /var/tmp (/tmp can be a tmpfs and take up RAM), not below $HOME.
+# Needs dayzmake on PATH (>= 1.0.0 recommended). bzed's older armake2 fork (pre-rename, may have bugs) is accepted,
+# upstream armake2 is not. Write <out-dir> below /var/tmp (/tmp can be a tmpfs and take up RAM), not below $HOME.
 set -eu
 [ $# -eq 2 ] || { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 install=$1 out=$2
-command -v armake2 >/dev/null || { echo "armake2 not found on PATH" >&2; exit 1; }
+DZPBO=${DAYZMAKE:-}
+if [ -z "$DZPBO" ]; then
+  # bzed's fork is the only usable one; it is recognised by --proton-binarize, whether the binary is called
+  # dayzmake or armake2 (the fork's name before it was detached and renamed).
+  for c in dayzmake armake2; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" -h 2>&1 | grep -q -- --proton-binarize; then DZPBO=$c; break; fi
+  done
+fi
+[ -n "$DZPBO" ] || { echo "dayzmake not found on PATH (upstream armake2 will not do: bzed's fork has --proton-binarize)" >&2; exit 1; }
+[ "$DZPBO" = dayzmake ] || echo "note: using $DZPBO; dayzmake >= 1.0.0 is recommended (the pre-rename armake2 binary may have bugs)" >&2
 [ -d "$install" ] || { echo "$install is not a directory" >&2; exit 1; }
 mkdir -p "$out"
 tmp=$(mktemp -d /var/tmp/dayz-extract.XXXXXX)
@@ -26,7 +36,7 @@ find "$install" -maxdepth 2 -type d \( -name dta -o -iname addons \) -print0 | s
 while IFS= read -r -d '' dir; do
   find "$dir" -maxdepth 1 -type f -name '*.pbo' -print0 | sort -z |
   while IFS= read -r -d '' pbo; do
-    armake2 inspect "$pbo" > "$tmp/list" 2>/dev/null || { echo "skip (unreadable): $pbo" >&2; continue; }
+    "$DZPBO" inspect "$pbo" > "$tmp/list" 2>/dev/null || { echo "skip (unreadable): $pbo" >&2; continue; }
     prefix=$(sed -n 's/^- prefix=//p' "$tmp/list" | tr -d '\r' | tr '\\' '/')
     [ -n "$prefix" ] || prefix=$(basename "$pbo" .pbo)
     # file rows: "<path>   <method> <orig> <packed>"; keep code files and config.bin
@@ -43,10 +53,10 @@ while IFS= read -r -d '' dir; do
       case $rel in
         *config.bin)
           rm -f "$tmp/config.bin"
-          armake2 cat "$pbo" "$inner" "$tmp/config.bin" >/dev/null 2>&1 &&
-            armake2 derapify -f "$tmp/config.bin" "${dest%.bin}.cpp" >/dev/null 2>&1 ||
+          "$DZPBO" cat "$pbo" "$inner" "$tmp/config.bin" >/dev/null 2>&1 &&
+            "$DZPBO" derapify -f "$tmp/config.bin" "${dest%.bin}.cpp" >/dev/null 2>&1 ||
             echo "derapify failed: $pbo $inner" >&2 ;;
-        *) armake2 cat "$pbo" "$inner" "$dest" >/dev/null 2>&1 || echo "cat failed: $pbo $inner" >&2 ;;
+        *) "$DZPBO" cat "$pbo" "$inner" "$dest" >/dev/null 2>&1 || echo "cat failed: $pbo $inner" >&2 ;;
       esac
       n=$((n + 1))
     done < "$tmp/want"

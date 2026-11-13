@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a DayZ mod for the Steam Workshop with armake2: keys, PBOs, signatures, upload folder.
+# Prepare a DayZ mod for the Steam Workshop with dayzmake: keys, PBOs, signatures, upload folder.
 #
 # Project layout (created by `init`, filled by `keygen` and `build`):
 #   .dayzmod            MOD_NAME=MyMod (read by every command)
@@ -18,17 +18,18 @@
 #   keygen                  create secrets/<Key>.biprivatekey and keys/<Key>.bikey (refuses to overwrite)
 #   build [--no-bin] [--v2] [--binarize-models]
 #                           build+sign every src/<Addon>/ and assemble build/@<ModName>/
-#                           --no-bin  pack without rapifying config.cpp (armake2 pack)
+#                           --no-bin  pack without rapifying config.cpp (dayzmake pack)
 #                           --v2      sign with the older v2 signature instead of v3
-#                           --binarize-models  convert .p3d/.rtm (MLOD -> ODOL) via armake2 --proton-binarize
+#                           --binarize-models  convert .p3d/.rtm (MLOD -> ODOL) via dayzmake --proton-binarize
 #                                    (BI's binarize.exe from DayZ Tools under Proton; Linux only,
 #                                    see systems/mod-packaging.md). Sources stay untouched.
 #   check                   verify nothing secret is tracked or staged, and the signatures verify
 #   publish-hint            print the `workshop create` / `workshop update` commands
 #
-# Environment: ARMAKE2 (binary, default: the armake2 found in PATH), KEY_NAME (default: ModName),
+# Environment: DAYZMAKE (binary, default: dayzmake from PATH, else bzed's older armake2 fork; upstream armake2 is rejected),
+#              KEY_NAME (default: ModName),
 #              WORKSHOP_APP_ID (default 221100, the DayZ client app),
-#              STEAM_ROOT, DAYZ_TOOLS, PROTON: passed through to armake2 for --binarize-models.
+#              STEAM_ROOT, DAYZ_TOOLS, PROTON: passed through to dayzmake for --binarize-models.
 # Nothing here talks to Steam: uploading stays a deliberate manual step.
 set -euo pipefail
 
@@ -40,7 +41,7 @@ if [ "${1:-}" = "-C" ]; then PROJECT=${2:?-C needs a directory}; shift 2; fi
 CMD=${1:-}; [ $# -gt 0 ] && shift
 [ -n "$CMD" ] || { sed -n '2,/^set -euo/p' "$0" | sed '$d;s/^# \{0,1\}//'; exit 2; }
 
-ARMAKE2=${ARMAKE2:-armake2}
+DAYZMAKE=${DAYZMAKE:-${ARMAKE2:-$(command -v dayzmake || command -v armake2 || echo dayzmake)}}
 APP_ID=${WORKSHOP_APP_ID:-221100}
 
 # Files that must never end up inside a PBO or the Workshop upload.
@@ -56,13 +57,19 @@ load_conf() {
     CONTENT="$PROJECT/build/@$MOD_NAME"
 }
 
-# Use the armake2 found in PATH first (or $ARMAKE2). The bzed fork (https://github.com/bzed/armake2) is detected by its --proton-binarize option:
-#   armake2 -h 2>&1 | grep -- --proton-binarize
-need_armake2() {
-    command -v "$ARMAKE2" >/dev/null 2>&1 || die "armake2 not found in PATH. Install the DayZ fork: git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release (then put target/release/armake2 in PATH), or set ARMAKE2=/path/to/armake2"
-    local help; help=$("$ARMAKE2" --help 2>&1 || true)
-    # Upstream leaves *.c files out of the PBO signature hash, so signed script mods fail the server's check.
-    case "$help" in *--proton-binarize*) ;; *) die "$(command -v "$ARMAKE2") is not the bzed fork (no --proton-binarize in -h). DayZ mods need the fork (upstream signs wrongly): git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release" ;; esac
+# Use the dayzmake found in PATH first (or $DAYZMAKE). bzed's fork (https://github.com/bzed/dayzmake) is detected by its --proton-binarize option:
+#   dayzmake -h 2>&1 | grep -- --proton-binarize
+need_dayzmake() {
+    command -v "$DAYZMAKE" >/dev/null 2>&1 || die "dayzmake not found in PATH. Install it: git clone https://github.com/bzed/dayzmake && cd dayzmake && cargo build --release (then put target/release/dayzmake in PATH), or set DAYZMAKE=/path/to/dayzmake"
+    local help; help=$("$DAYZMAKE" --help 2>&1 || true)
+    # Upstream armake2 leaves *.c files out of the PBO signature hash, so signed script mods fail the server's check.
+    case "$help" in *--proton-binarize*) ;; *) die "$(command -v "$DAYZMAKE") is not bzed's fork (no --proton-binarize in -h); upstream armake2 signs wrongly. Install dayzmake: git clone https://github.com/bzed/dayzmake && cd dayzmake && cargo build --release" ;; esac
+    # bzed's fork built before the rename (binary called armake2, version v0.3.0) still works, but may carry bugs fixed since.
+    local ver; ver=$("$DAYZMAKE" --version 2>/dev/null | head -1)
+    case "$ver" in
+        v1.*|v[2-9].*|v[1-9][0-9].*) ;;
+        *) echo "warning: $DAYZMAKE reports '$ver'; dayzmake >= 1.0.0 is recommended (the pre-rename armake2 binary may have bugs)" >&2 ;;
+    esac
 }
 
 cmd_init() {
@@ -91,7 +98,7 @@ cmd_init() {
 }
 
 cmd_keygen() {
-    load_conf; need_armake2
+    load_conf; need_dayzmake
     local priv="$PROJECT/secrets/$KEY_NAME.biprivatekey" pub="$PROJECT/keys/$KEY_NAME.bikey"
     if [ -e "$priv" ] || [ -e "$pub" ]; then
         die "key $KEY_NAME already exists. Replacing it makes every server owner install a new .bikey and breaks existing signatures; delete both files by hand if you really mean it."
@@ -100,7 +107,7 @@ cmd_keygen() {
         || [ ! -d "$PROJECT/.git" ] \
         || die "secrets/ is not git-ignored; run init (or add 'secrets/' and '*.biprivatekey' to .gitignore) first"
     mkdir -p "$PROJECT/secrets" "$PROJECT/keys"
-    ( umask 077; "$ARMAKE2" keygen "$PROJECT/secrets/$KEY_NAME" )
+    ( umask 077; "$DAYZMAKE" keygen "$PROJECT/secrets/$KEY_NAME" )
     mv "$PROJECT/secrets/$KEY_NAME.bikey" "$pub"
     chmod 600 "$priv"
     say "private key: $priv  (BACK THIS UP outside the repo; losing it means a new key and new .bikey for all servers)"
@@ -134,7 +141,7 @@ cmd_build() {
             *) die "unknown option: $a" ;;
         esac
     done
-    load_conf; need_armake2
+    load_conf; need_dayzmake
     local priv="$PROJECT/secrets/$KEY_NAME.biprivatekey"
     [ -f "$priv" ] || die "no private key at $priv; run: $0 keygen"
     local addons=()
@@ -152,22 +159,22 @@ cmd_build() {
     for dir in "${addons[@]}"; do
         addon=$(basename "$dir")
         [ -f "$dir/config.cpp" ] || echo "warning: src/$addon has no config.cpp; DayZ will not load it as an addon" >&2
-        [ -f "$dir/\$PREFIX\$" ] || echo "note: src/$addon has no \$PREFIX\$; armake2 falls back to the folder name '$addon' as prefix" >&2
+        [ -f "$dir/\$PREFIX\$" ] || echo "note: src/$addon has no \$PREFIX\$; dayzmake falls back to the folder name '$addon' as prefix" >&2
         pbo="$CONTENT/addons/$addon.pbo"
         srcdir=$dir; wq=()
         if [ "$binmodels" = 1 ]; then
             [ "$mode" = build ] || die "--binarize-models cannot be combined with --no-bin"
-            wq=(--proton-binarize)      # armake2 runs binarize.exe under Proton
+            wq=(--proton-binarize)      # dayzmake runs binarize.exe under Proton
         fi
         say "$mode $addon"
         # Absolute include path so `#include "\MyMod\..."` style includes resolve from the project's src/.
         if [ "$mode" = build ]; then
-            "$ARMAKE2" build -f -i "$PROJECT/src" -e product=dayz "${wq[@]}" "${excl[@]}" "$srcdir" "$pbo"
+            "$DAYZMAKE" build -f -i "$PROJECT/src" -e product=dayz "${wq[@]}" "${excl[@]}" "$srcdir" "$pbo"
         else
-            "$ARMAKE2" pack -f -e product=dayz "${excl[@]}" "$srcdir" "$pbo"
+            "$DAYZMAKE" pack -f -e product=dayz "${excl[@]}" "$srcdir" "$pbo"
         fi
-        "$ARMAKE2" sign -f "${ver[@]}" "$priv" "$pbo"
-        "$ARMAKE2" verify "$PROJECT/keys/$KEY_NAME.bikey" "$pbo" "$pbo.$KEY_NAME.bisign" \
+        "$DAYZMAKE" sign -f "${ver[@]}" "$priv" "$pbo"
+        "$DAYZMAKE" verify "$PROJECT/keys/$KEY_NAME.bikey" "$pbo" "$pbo.$KEY_NAME.bisign" \
             || die "signature of $addon.pbo does not verify against keys/$KEY_NAME.bikey"
     done
 
@@ -199,7 +206,7 @@ check_tags() {
 }
 
 cmd_check() {
-    load_conf; need_armake2
+    load_conf; need_dayzmake
     local bad=0 f
     if [ -d "$PROJECT/.git" ] || git -C "$PROJECT" rev-parse --git-dir >/dev/null 2>&1; then
         if git -C "$PROJECT" ls-files | grep -q 'biprivatekey'; then
@@ -231,7 +238,7 @@ cmd_check() {
     check_tags || bad=1
     for f in "$CONTENT"/addons/*.pbo; do
         [ -f "$f" ] || { echo "note: nothing built yet (run build)"; break; }
-        "$ARMAKE2" verify "$PROJECT/keys/$KEY_NAME.bikey" "$f" "$f.$KEY_NAME.bisign" >/dev/null \
+        "$DAYZMAKE" verify "$PROJECT/keys/$KEY_NAME.bikey" "$f" "$f.$KEY_NAME.bisign" >/dev/null \
             && echo "ok: $(basename "$f") signature verifies" || { echo "FAIL: $(basename "$f") signature" >&2; bad=1; }
     done
     [ "$bad" -eq 0 ] || exit 1

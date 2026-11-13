@@ -1,48 +1,56 @@
-# Packaging, Signing and Publishing a DayZ Mod (armake2 + workshop uploader)
+# Packaging, Signing and Publishing a DayZ Mod (dayzmake + workshop uploader)
 
 Turn a source tree into a Workshop-ready folder without DayZ Tools or Windows:
-**armake2** builds and signs the PBOs, **workshop** (steam-workshop-uploader) uploads the folder.
-**armake2 must be bzed's fork** (see below): upstream armake2 produces mods that fail on servers. The uploader is the upstream https://github.com/nozwock/steam-workshop-uploader, which supports DayZ.
+**dayzmake** builds and signs the PBOs, **workshop** (steam-workshop-uploader) uploads the folder.
+**dayzmake is required** (see below): it is bzed's DayZ fork of armake2, renamed; upstream armake2 produces mods that fail on
+servers. The uploader is the upstream https://github.com/nozwock/steam-workshop-uploader, which supports DayZ.
 `scripts/dayz-mod-pack.sh` wires the two together; this file explains what it does and what the other
-armake2 commands are for.
+dayzmake commands are for.
 
-Verified on Linux with the bzed armake2 fork (v0.3.0), DayZ Server 1.29.163709 (not re-run on 1.30): a PBO built, signed and
+Verified on Linux with dayzmake (v1.0.0, 2026-11-13: build, sign and verify of a test addon; the end-to-end server test
+was done with the same code as armake2 v0.3.0), DayZ Server 1.29.163709 (not re-run on 1.30): a PBO built, signed and
 verified with this flow loads with `-mod=@Mod` and `verifySignatures = 2`, and its scripts run.
-The maintainer has since used the armake2 fork and the uploader end to end for real uploads ("working well").
+The maintainer has since used the fork and the uploader end to end for real uploads ("working well").
 **Not verified here:** the v3-vs-v2 signature check on a real client.
 
-## The bzed armake2 fork is required
+## dayzmake is required (bzed's armake2 fork)
 
 Tested: upstream `KoffeinFlummi/armake2` **ignores `*.c` files when it creates signatures**, so the `.bisign` of a script
 mod does not cover its scripts and the result is not a correct DayZ signature. It also fails on DayZ configs. You **need**
-**https://github.com/bzed/armake2** (upstream remote kept, rebased on upstream master). The uploader needs no fork
-(see "Uploading with `workshop`"). Fork changes in armake2:
+**https://github.com/bzed/dayzmake**, the DayZ fork of armake2 (upstream remote kept, rebased on upstream master), which
+was detached from armake2 and renamed to dayzmake. Use **dayzmake >= 1.0.0**: a binary built from the fork before the
+rename (still called `armake2`, version `v0.3.0`) works, but may carry bugs fixed since. The uploader needs no fork
+(see "Uploading with `workshop`"). Fork changes:
 preprocessor grammar fixes (`#include` directives, nested macro arguments), `$PREFIX$` accepted when
-building PBOs, `paa2img` / `img2paa`, opt-in `build --proton-binarize` (models via BI binarize.exe under Proton on Linux), current Rust and dependency versions, a Dockerfile/`build.sh`,
+building PBOs, `paa2img` / `img2paa`, `inspect` of models (MLOD/ODOL: format, LODs, textures, materials, selections),
+a `binarize` command, texture/material checks in `build` (`missing-texture`, `missing-material`), opt-in
+`build --proton-binarize` (models via BI binarize.exe under Proton on Linux), current Rust and dependency versions, a Dockerfile/`build.sh`,
 and an end-to-end DayZ test harness (`testharness/run.sh [--both]`: build, sign, boot a server, check logs).
 
-**Look for an installed armake2 first**, then check what it can do; only build the fork if it is missing or too old:
+**Look for an installed dayzmake first**, then check what it can do; only build it if it is missing or too old:
 
 ```sh
-command -v armake2 && armake2 -h 2>&1 | grep -- --proton-binarize   # a hit = bzed fork; no hit = upstream, do not use
-armake2 --version
+command -v dayzmake && dayzmake -h 2>&1 | grep -- --proton-binarize   # a hit = the fork; no hit = upstream armake2, do not use
+dayzmake --version
 ```
 
 The fork is identified by `--proton-binarize` (upstream signs `*.c` wrongly, fails on DayZ configs). Signatures from the
 fork work fine (maintainer-tested). `build --proton-binarize` also converts `.p3d`/`.rtm` natively on Linux.
 
 ```sh
-git clone https://github.com/bzed/armake2 && cd armake2 && cargo build --release   # needs libssl-dev
-install -m755 target/release/armake2 ~/.bin/       # any directory in PATH
-# or in one step:  cargo install --git https://github.com/bzed/armake2 --root ~/.local   (binary in ~/.local/bin)
+git clone https://github.com/bzed/dayzmake && cd dayzmake && cargo build --release   # needs libssl-dev
+install -m755 target/release/dayzmake ~/.bin/       # any directory in PATH
+# or in one step:  cargo install --git https://github.com/bzed/dayzmake --root ~/.local   (binary in ~/.local/bin)
 ```
 
-Build from the fork's current `master` on GitHub. Checked 2026-11-03: `master` at `7dcb3cf`, installed with `cargo install --git`,
-is detected as the fork and keeps texture alpha with `--proton-binarize` (see below). A build from an older checkout may not:
-`armake2 --version` prints `v0.3.0` either way, so when in doubt, reinstall from GitHub.
+Build from the fork's current `master` on GitHub. Checked 2026-11-03: `master` at `7dcb3cf` (then still called armake2),
+installed with `cargo install --git`, is detected as the fork and keeps texture alpha with `--proton-binarize` (see below).
+A build from an older checkout may not: `dayzmake --version` prints `v1.0.0` (armake2 builds printed `v0.3.0`) and the
+version does not tell builds apart, so when in doubt, reinstall from GitHub.
 
-`dayz-mod-pack.sh` does this check itself: it uses the `armake2` from `PATH` (or `$ARMAKE2`), refuses to run when it is
-upstream, and for `--binarize-models` picks `--proton-binarize` when available.
+`dayz-mod-pack.sh` does this check itself: it uses the `dayzmake` from `PATH`, else bzed's older `armake2` binary
+(or `$DAYZMAKE`), refuses to run when it is upstream, warns when the binary is older than 1.0.0, and for
+`--binarize-models` picks `--proton-binarize` when available.
 
 ## Quick start
 
@@ -93,11 +101,11 @@ MyMod/                     git repository
   not un-leak a key that was pushed; rotate it.
 - Do not commit `build/`: it is reproducible, and a signature is only valid for the exact PBO bytes.
 
-## Binarization: what armake2 can and cannot do
+## Binarization: what dayzmake can and cannot do
 
 `build` (the script's default) is "binarize" as far as Linux allows:
 
-| Input | `armake2 build` | `armake2 pack` |
+| Input | `dayzmake build` | `dayzmake pack` |
 |---|---|---|
 | `config.cpp` (any `*.cpp`) | preprocessed, rapified to `config.bin` | copied as text |
 | `*.rvmat` | rapified | copied |
@@ -107,10 +115,13 @@ MyMod/                     git repository
 Consequences: rapified `config.bin` is the default because it is smaller, faster to load and what the
 official tools produce; scripts always stay text. Models must be binarized (MLOD to ODOL) in DayZ Tools
 or the PBO ships MLOD models, which load but are bigger and slower. Textures must already be `.paa`;
-convert PNG/TGA with `armake2 img2paa -t dxt5 -c in.png out_co.paa` (`-t dxt1` for opaque maps; keep
-power-of-two sizes). Use `--no-bin` (`armake2 pack`) to ship `config.cpp` untouched, e.g. when
-debugging a rapify problem. A `$NOBIN$` or `$NOBIN-NOTEST$` file in an addon folder disables
-binarization for that addon only.
+convert PNG/TGA with `dayzmake img2paa -t dxt5 -c in.png out_co.paa` (`-t dxt1` for opaque maps; keep
+power-of-two sizes; **tested** with dayzmake v1.0.0 on 2026-11-13, `paa2img` back to PNG too). Use `--no-bin`
+(`dayzmake pack`) to ship `config.cpp` untouched, e.g. when debugging a rapify problem. A `$NOBIN$` or
+`$NOBIN-NOTEST$` file in an addon folder disables binarization for that addon only.
+
+`build` also checks every MLOD it is about to binarize (with or without `--proton-binarize`) and warns about
+textures and materials that are not in the addon (`missing-texture`, `missing-material`; silence with `-w`).
 
 ### DayZ Tools under Proton: link the game data into the tools prefix
 
@@ -142,14 +153,14 @@ AddonBuilder exits 0 on a failed build (the result is `[ResultCode]` in `DayZ To
 handled, ImageToPAA, CfgConvert, the DS tools, AddonBuilder (also full builds), binarize, TexView, Object Builder, Workbench
 and DayZDiag (client and `-server`) ran. The DayZ Modding Knowledge Pack ships a runner that does all of this in private
 prefixes: `skills/_shared/scripts/dayz-proton.sh` (`init <P-dir>`, then `tool`/`gui`/`binarize`/`headless`), with the measured
-matrix in `skills/_shared/linux-proton.md`. Still prefer armake2 for building and signing.
+matrix in `skills/_shared/linux-proton.md`. Still prefer dayzmake for building and signing.
 
 Never edit or write into the Steam install directories themselves. A throwaway prefix
 (`STEAM_COMPAT_DATA_PATH` in `/tmp` or `/var/tmp`, as in the recipe below) keeps experiments out of the real tools prefix.
 
 ### `binarize.exe` under Proton: works if Wine's `Z:` drive is tiny
 
-`dayz-mod-pack.sh build --binarize-models` passes `--proton-binarize` to armake2, which does the recipe below itself: it creates a
+`dayz-mod-pack.sh build --binarize-models` passes `--proton-binarize` to dayzmake, which does the recipe below itself: it creates a
 temporary sandbox and Wine prefix (first run takes a while), converts every `.p3d`/`.rtm` from a staging copy (your sources stay
 MLOD), builds and signs, and deletes the sandbox. It finds DayZ Tools and Proton under the Steam root (override with
 `STEAM_ROOT`, `DAYZ_TOOLS`, `PROTON`) and fails with the binarize log if a model does not convert.
@@ -161,12 +172,12 @@ error was printed: the ODOL's section flags lost `0x802020` (IsAlpha|IsTranspare
 back to the not-found default (measured 2026-10-31, binarize 1.30.164200.56). `0a0ce3b` runs binarize from a `P:` root with
 the addon mapped. Verified 2026-11-03 (binarize 1.30.164289.70, Proton Hotfix, a cube textured with a DXT5 `_ca.paa`): a fork
 build from HEAD `7dcb3cf` gives output **byte-identical** to binarize run by hand from a `P:` root, and to AddonBuilder's binarized
-model; an older build still differed in 20 bytes. `armake2 --version` prints `v0.3.0` for both, so the version does not tell
-them apart: if in doubt, rebuild the fork from source, or binarize one textured model both ways and `cmp` the results.
-Not checked in game.
+model; an older build still differed in 20 bytes. `dayzmake --version` prints `v1.0.0` (and armake2 builds printed `v0.3.0`)
+for every build, so the version does not tell them apart: if in doubt, rebuild the fork from source, or binarize one
+textured model both ways and `cmp` the results. Not checked in game.
 
 Upstream armake2 only calls BI's `binarize.exe` (DayZ Tools, Steam app 830640) on Windows, so on Linux `.p3d`/`.rtm`
-stay MLOD; the bzed fork adds `build --proton-binarize` (Linux, opt-in). Running the exe yourself under Proton works, with one trap. Wine maps `Z:` to `/`, and Binarize
+stay MLOD; the fork adds `build --proton-binarize` (Linux, opt-in) and a `binarize` command for a single file. Running the exe yourself under Proton works, with one trap. Wine maps `Z:` to `/`, and Binarize
 walks directory trees from that root: it burned CPU for minutes without output (a strace showed it listing
 unrelated directories such as `~/.cargo`, plus a CIFS mount), whether the input file existed or not, with or
 without a fake `P:` drive. A `Z:` that contains only what Binarize needs fixes it: 3 s, exit code 0.
@@ -192,31 +203,31 @@ above). An strace showed binarize stat'ing `<cwd>\mymod\data\glass_ca.paa`. Text
 are only found if they also exist under `P:` (extracted game data). Drop `-silent` and redirect through
 `cmd /c "… > Z:\out\log.txt 2>&1"` to get the log ("Convert model …", "No model config used").
 **Not verified:** loading such an ODOL on a server. Do not kill leftover Wine processes with `pkill -f binarize...` from a shell whose own command line
-contains that text; it kills your shell. On Windows, armake2 finds the exe itself through the registry key
+contains that text; it kills your shell. On Windows, dayzmake finds the exe itself through the registry key
 `HKCU\Software\Bohemia Interactive\binarize` (`path` = folder with `binarize_x64.exe`) and `build` binarizes
 `.p3d`/`.rtm` in one go (not tested here).
 
-### Checking armake2 against BI's own tools (Proton)
+### Checking dayzmake against BI's own tools (Proton)
 
-When armake2 output is in doubt, run the same input through DayZ Tools in a sandbox set up as above (copy the tool
+When dayzmake output is in doubt, run the same input through DayZ Tools in a sandbox set up as above (copy the tool
 folder, e.g. `Bin/CfgConvert` or `Bin/DsUtils`, into `$W`; `cd` into it; `Z:` confined to `$W`). Tested 2026-10-31, Proton Hotfix:
 
 ```sh
-proton run ./CfgConvert.exe -bin -dst 'Z:\out\x.bin' 'Z:\in\x.cpp'   # then: armake2 derapify $W/out/x.bin
+proton run ./CfgConvert.exe -bin -dst 'Z:\out\x.bin' 'Z:\in\x.cpp'   # then: dayzmake derapify $W/out/x.bin
 proton run cmd /c 'DSSignFile.exe Z:\k\Name.biprivatekey Z:\p\x.pbo > Z:\out\log.txt 2>&1'
 proton run cmd /c 'DSCheckSignatures.exe -deep Z:\p Z:\k > Z:\out\log.txt 2>&1'
 ```
 
 - The DS tools print nothing on Proton's console. Redirect through `cmd /c … > file` to see their output.
-- Compare CfgConvert and armake2 output **after `derapify`**, not byte for byte: CfgConvert writes a 4-byte offset
-  after every class body and armake2 does not. The decoded configs are identical, and the game loads both.
+- Compare CfgConvert and dayzmake output **after `derapify`**, not byte for byte: CfgConvert writes a 4-byte offset
+  after every class body and dayzmake does not. The decoded configs are identical, and the game loads both.
 - A PBO edited by hand needs its SHA-1 trailer recomputed (`\0` + `sha1(everything before it)`), or DSSignFile
   fails with "Stored and calculated hash don't match".
 
-### armake2 config/PBO bugs found against CfgConvert (2026-10-31): fixed in the fork's `master`
+### dayzmake config/PBO bugs found against CfgConvert (2026-10-31): fixed in the fork's `master`
 
-Found with fork `782396e` against CfgConvert on 2026-10-31. Each has a fix commit in the fork, and each was re-tested
-on 2026-11-03 with `master` (`7dcb3cf`) installed from GitHub (`cargo install --git https://github.com/bzed/armake2`):
+Found with the fork as `armake2` `782396e` against CfgConvert on 2026-10-31. Each has a fix commit in the fork, and each was re-tested
+on 2026-11-03 with `master` (`7dcb3cf`) installed from GitHub (`cargo install --git https://github.com/bzed/dayzmake`):
 
 | Was | Now (re-tested) | Fix |
 |---|---|---|
@@ -228,24 +239,25 @@ on 2026-11-03 with `master` (`7dcb3cf`) installed from GitHub (`cargo install --
 | `__EVAL`/`__EXEC` not evaluated; a warning on line 1 crashed | `__EVAL(1+2*3)` → `7` | `f6465e9`, `b928152` |
 | non-UTF-8 (cp1252) entry names: `inspect`/`unpack` crashed | warning, extracted as windows-1252 | `698cfcf`, `173319f` |
 
-An older local build still has these bugs, and `--version` prints `v0.3.0` for every build: reinstall from GitHub.
+An older local build still has these bugs, and `--version` prints the same version for every build: reinstall from GitHub.
 
-**Still open (found 2026-11-03):** `armake2 pack` of a source folder that holds a file whose *Linux* name is not valid
-UTF-8 (e.g. `caf\xe9.txt`) exits without an error and writes a PBO that `inspect` and `unpack` refuse with
-`Failed to read PBO: failed to fill whole buffer`. Rename such files to UTF-8 before packing. (A PBO extracted by armake2
+**Fixed in dayzmake 1.0.0 (re-tested 2026-11-13):** `pack` of a source folder that holds a file whose *Linux* name is not
+valid UTF-8 (e.g. `caf\xe9.txt`) used to exit 0 and write a PBO that `inspect` and `unpack` refused with
+`Failed to read PBO: failed to fill whole buffer`. In v1.0.0 such a file packs, inspects and unpacks (name kept as raw
+bytes). Older armake2 builds still need the file renamed to UTF-8 before packing. (A PBO extracted by dayzmake
 itself writes UTF-8 names, so this mostly hits trees extracted by other tools.)
 
 `-e product=dayz` (set by the script) goes into the PBO header next to `prefix=`.
 
 ## Signatures
 
-- `armake2 keygen <path/Name>` writes `<Name>.biprivatekey` and `<Name>.bikey` (1024-bit RSA; the key
+- `dayzmake keygen <path/Name>` writes `<Name>.biprivatekey` and `<Name>.bikey` (1024-bit RSA; the key
   name is stored inside both files and in the signature file name).
-- `armake2 sign <key.biprivatekey> <x.pbo>` writes `x.pbo.<KeyName>.bisign` next to the PBO. The
+- `dayzmake sign <key.biprivatekey> <x.pbo>` writes `x.pbo.<KeyName>.bisign` next to the PBO. The
   `.bisign` must sit beside its PBO with exactly that name, in the same `addons/` folder.
 - Default is the **v3** signature. `--v2` writes the older v2 form; use it only if a client or server
   rejects v3 (`build --v2` in the script). v3 was not tested against a real client here.
-- `armake2 verify <Name.bikey> <x.pbo> [x.pbo.Name.bisign]` checks a signature (exit code 0 = valid).
+- `dayzmake verify <Name.bikey> <x.pbo> [x.pbo.Name.bisign]` checks a signature (exit code 0 = valid).
 - Tested 2026-10-31 against DayZ Tools (DsUtils) under Proton: for a PBO with `config.bin`, a `.c` script and an
   rvmat, the fork's v3 `.bisign` is **byte-identical** to `DSSignFile.exe`'s, and `DSCheckSignatures.exe -deep`
   reports it OK.
@@ -254,32 +266,36 @@ itself writes UTF-8 names, so this mostly hits trees extracted by other tools.)
 - Server owners copy `keys/<Name>.bikey` into the server's `keys/` folder; with `verifySignatures = 2`
   the server rejects clients whose PBOs lack a valid signature for an installed key.
 
-## Everything else armake2 can do
+## Everything else dayzmake can do
 
 ```
-armake2 rapify     [-i inc]... [src [dst]]     config.cpp -> config.bin (preprocesses first)
-armake2 derapify   [-d indent] [src [dst]]     config.bin -> readable config text
-armake2 preprocess [-i inc]... [src [dst]]     expand #include/#define, print the result
-armake2 build      [-i inc] [-x glob] [-e k=v] [-k key] [-s sig] <dir> [pbo]   rapify + pack
-armake2 pack       [-x glob] [-e k=v] [-k key] [-s sig] <dir> [pbo]            pack, no rapify
-armake2 inspect    <pbo>                       list header extensions and files with sizes
-armake2 unpack     [-x glob] <pbo> <dir>       extract; header lands in $PBOPREFIX$
-armake2 cat        <pbo> <file> [dst]          print one file from a PBO (use \ in the inner path)
-armake2 keygen / sign / verify                 see above
-armake2 img2paa    [-t dxt1|dxt5] [-c] <img> <paa>     image -> PAA
-armake2 paa2img    <paa> <img>                 PAA -> png/other image
-armake2 binarize                               Windows only (BI binarize.exe); not usable on Linux
+dayzmake rapify     [-i inc]... [src [dst]]     config.cpp -> config.bin (preprocesses first)
+dayzmake derapify   [-d indent] [src [dst]]     config.bin -> readable config text
+dayzmake preprocess [-i inc]... [src [dst]]     expand #include/#define, print the result
+dayzmake build      [-i inc] [-x glob] [-e k=v] [-k key] [-s sig] <dir> [pbo]   rapify + pack (+ model checks)
+dayzmake pack       [-x glob] [-e k=v] [-k key] [-s sig] <dir> [pbo]            pack, no rapify
+dayzmake inspect    <pbo | model.p3d>           list header extensions and files with sizes; for a model: format, LODs, textures, materials, selections
+dayzmake unpack     <pbo> <dir>                 extract; header lands in $PBOPREFIX$ (no exclude filter)
+dayzmake cat        <pbo> <file> [dst]          print one file from a PBO (use \ in the inner path)
+dayzmake keygen / sign [--v2] / verify          see above
+dayzmake img2paa    [-t dxt1|dxt5] [-c] <img> <paa>     image -> PAA
+dayzmake paa2img    <paa> <img>                 PAA -> png/other image
+dayzmake binarize   <src> <dst>                 one file via BI binarize.exe (Windows; Proton on Linux)
 ```
+
+`inspect` decides by the file header: a PBO lists its header extensions and files, an MLOD model lists its LODs,
+textures, materials and selections (an ODOL only its format and version). `binarize` has no PBO to take a prefix from, so
+it uses the model's folder as the addon; for a model in `data\` or a multi-part prefix use `build --proton-binarize`.
 
 Common flags: `-v` verbose, `-f` overwrite targets, `-w <name>` silence a warning,
 `-i <dir>` include search path (default `.`), `-x <glob>` exclude from the PBO, `-e key=value` extra
 PBO header, `-k key` sign right after building (v3), `-s sig` explicit signature path. Without a
 source/target, `rapify`, `preprocess` and `derapify` read stdin and write stdout (`cat` writes stdout), which makes them
-usable in pipes. Debug recipes:
+usable in pipes. `unpack` has no `-x` (tested v1.0.0), so extract single files with `cat`. Debug recipes:
 
-- "Why does my config not build": `armake2 preprocess src/MyMod/config.cpp | less` shows what the parser sees.
-- "What did the official PBO set": `armake2 inspect Vanilla.pbo` and `armake2 cat Vanilla.pbo config.bin | armake2 derapify`.
-- "Is my prefix right": `armake2 inspect x.pbo` must show `prefix=<what config.cpp's script paths start with>`.
+- "Why does my config not build": `dayzmake preprocess src/MyMod/config.cpp | less` shows what the parser sees.
+- "What did the official PBO set": `dayzmake inspect Vanilla.pbo` and `dayzmake cat Vanilla.pbo config.bin | dayzmake derapify`.
+- "Is my prefix right": `dayzmake inspect x.pbo` must show `prefix=<what config.cpp's script paths start with>`.
   With `-e`/`$PREFIX$` unset, the folder name becomes the prefix.
 - `$PREFIX$` content: one line `MyMod`, or `key=value` lines (`prefix=MyMod`). Use `MyMod\Sub` for nested prefixes.
 
@@ -290,7 +306,7 @@ the official DayZ Publisher (`DayZ Tools/Bin/Publisher`):
 
 | File | In real Workshop mods | Contains the app id? | Who creates it |
 |---|---|---|---|
-| `addons/*.pbo` (+ `.bisign`) | yes; the Publisher refuses an upload without an `addons` folder in the root, or with `.pbo` files outside it (`addons` and `Addons` both occur) | no | armake2 (`build`, `sign`) |
+| `addons/*.pbo` (+ `.bisign`) | yes; the Publisher refuses an upload without an `addons` folder in the root, or with `.pbo` files outside it (`addons` and `Addons` both occur) | no | dayzmake (`build`, `sign`) |
 | `keys/*.bikey` | in most mods (some server-side-only items have none) | no | `keygen` |
 | `mod.cpp` | 135 of 438 (optional, not needed) | **no, in none of them** | you, if you want it; `init` does not write one |
 | `meta.cpp` | 438 of 438 | **no** | the official Publisher; `dayz-mod-pack.sh build` mirrors it (id 0 before the first upload, like the Windows tools; the real id after) |
@@ -393,7 +409,7 @@ workshop --no-prompt update --content build/@MyMod --ignore-file .workshopignore
   prefix is `MyMod`. A wrong or missing prefix loads the PBO but compiles none of its scripts.
 - **One key per mod family**: sign every PBO of a mod with the same key so one `.bikey` covers all.
 - **Server mods vs client mods**: PBOs for `-servermod=` need no key on clients; `-mod=` mods do.
-- **Case and separators**: PBO inner paths use `\`; `armake2 cat` needs `'scripts\5_Mission\x.c'`.
+- **Case and separators**: PBO inner paths use `\`; `dayzmake cat` needs `'scripts\5_Mission\x.c'`.
 - **Large asset mods**: `build` loads files in memory; very large PBOs need RAM to match.
 - **Testing**: boot the result with `testing/local-server.md` (`-mod=@MyMod`, copy `keys/MyMod.bikey`
   into the tree's `keys/`) and compare script module counts with vanilla before uploading.
